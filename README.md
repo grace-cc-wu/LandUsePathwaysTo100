@@ -23,8 +23,10 @@ The following are the steps in the main steps in the analysis and the scripts an
 
 5. **spatialDisagg_funct_coLoc.py** (requires arcpy): Takes results of steps 2 and 3 to create Selected Project Areas for each RESOLVE portfolio/scenario (this was used to create Figure 4 in the paper). It assumes one could collocate solar and wind power plants within California. 
 
-6. **zonalStats_envImpact.ipynb** (does not require arcpy): As part of the Strategic Environmental Assessment, this script calculates the average housing density, area of rangeslands impacted, area of each land cover type impacted for each scenario. 
+6. **zonalStats_envImpact.ipynb**: As part of the Strategic Environmental Assessment, this script calculates the average housing density, area of rangeslands impacted, area of each land cover type impacted for each scenario. 
 
 7. **envImpactAssess_calcArea_envCat.py** (requires arcpy): This script calculates the area impacted for each environmental metric for each scenario. 
 
-8. **envImpactAssess_plotting.ipynb** (does not require arcpy): Creates a large "master" csv that combines the outputs of all environmental impact assessment analyses (Steps 6 and 7 above). The csv output of this script was then used to create Fig. 5 in the paper. 
+7. (alternative) **envImpactAssess_calcArea.ipynb**: This script also calculates the area impacted for each environmental metric for each scenario, but does not use arcpy functions. It does, however, take much longer to run for large, complex vectors compared to envImpactAssess_calcArea_envCat.py.
+
+8. **envImpactAssess_plotting.ipynb**: Creates a large "master" csv that combines the outputs of all environmental impact assessment analyses (Steps 6 and 7 above). The csv output of this script was then used to create Fig. 5 in the paper. 
