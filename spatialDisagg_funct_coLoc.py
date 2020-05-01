@@ -3,6 +3,9 @@
 Created on Wed Aug 29 15:28:02 2018
 
 @author: Grace
+
+PURPOSE: This script takes the outputs of createSupplyCurve.py and RESOLVE portfolios
+to create spatially-explicit maps of the build-out for each RESOLVE portfolio 
 """
 ##--------------------------------Preamble ----------------------------------
 import arcpy
@@ -25,9 +28,23 @@ from arcpy.sa import *
 import arcpy.cartography as CA
 arcpy.env.overwriteOutput = True
 
+'''
+################################################################################
+##---------------------Local Parameters and workspace------------------------###
+################################################################################
+'''
+##---------------------Set assumptions below for each technology------------------------
+netPPAsuffix = "_net"
+supplyCurvePrefix = "supplyCurve_"
+txMultiplier = 1.3
+tech = "Solar"
+netRENthreshold_m = 2500
+annualHrs = 8760
+txWidth_km = 0.076 ## km Width of tx corridor
+#**** UPDATE THIS AS PER THE TECHOLOGY: 
+largestZoneArea_km2 = 9 ## area of the largest possible zone in km2
 
-##---------------------Workspace------------------------
-
+##---------------------Set paths ------------------------
 mainDir = "C:\\Users\\Grace\\Documents\\TNC_beyond50\\PathTo100\\"
 
 ### Set workspace for saving outputs: create file geodatabase (fgdb) for run session outputs
@@ -51,17 +68,6 @@ arcpy.env.extent = templateRaster
 arcpy.env.mask = templateRaster
 arcpy.env.cellSize = templateRaster
 
-##---------------------Assumptions------------------------
-netPPAsuffix = "_net"
-supplyCurvePrefix = "supplyCurve_"
-txMultiplier = 1.3
-tech = "Solar"
-netRENthreshold_m = 2500
-annualHrs = 8760
-txWidth_km = 0.076 ## km Width of tx corridor
-#**** UPDATE THIS AS PER THE TECHOLOGY: 
-largestZoneArea_km2 = 9 ## area of the largest possible zone in km2
-
 ## Csvs:
 df_CFadj = pandas.read_csv(os.path.join(mainDir, "RESOLVEoutputs", "E3_Output of Environmental Screens_v2_CFadjustmentsForSpatialDisagg_constant.csv"))
 df_CFadj_w2w = pandas.read_csv(os.path.join(mainDir, "RESOLVEoutputs", "E3_Output of Environmental Screens_v2_CFadjustmentsForSpatialDisagg_w2w.csv"))
@@ -74,7 +80,6 @@ df_RESOLVEscenarios_selected = pandas.read_csv(os.path.join(mainDir, "RESOLVEout
 ## Subset to technology of interest
 df_CFadj_select = df_CFadj.filter(regex=('CF_adj_\S|RESOLVE_ZONE|Technology|STATE'), axis =1)
 df_CFadj_select_w2w = df_CFadj_w2w.filter(regex=('CF_adj_\S|RESOLVE_ZONE|Technology|STATE'), axis =1)
-
 
 RESOLVE_ZONES_CA_fc = os.path.join(genericInputsGDB, "SUPERCREZ_proj_CA_RESOLVE_ZONE")
 RESOLVE_ZONES_OOS_PV_fc = os.path.join(genericInputsGDB, "QRA_proj_RESOLVE_ZONE_solar")
@@ -118,7 +123,7 @@ catFileDict_geothermal = {"Cat1" : "cat1b",\
             "Cat3" : "cat3", \
              "Cat4": "cat4"}
 
-##--------------------- Inputs ----------------------------
+##--------------------- SET INPUT FILES FOR EACH TECHNOLOGY ----------------------------
 ## List of inputs to loop over
 zoneType_ls = {"state": "_PA_state", \
             "OOS_RESOLVEZONE": "_PA_OOS_RESOLVEZONE", \
@@ -126,7 +131,6 @@ zoneType_ls = {"state": "_PA_state", \
 scratch = "C:/Users/Grace/Documents/TNC_beyond50/PathTo100/siteSuitabilityOutputs/scratch.gdb"
 df_CFadj_select_tech = df_CFadj_select.loc[df_CFadj_select['Technology'] == tech]
 df_CFadj_select_w2w_tech = df_CFadj_select_w2w.loc[df_CFadj_select_w2w['Technology'] == tech]
-
 
 if tech == "Geothermal":
     ft_ls = {"Cat1" : "geothermal_cat1b",\
@@ -139,7 +143,6 @@ if tech == "Geothermal":
     df_CFadj_select_w2w_tech = df_CFadj_select_w2w.loc[df_CFadj_select_w2w['Technology'] == tech]
 
     geoZoneType_ls = {"_QRAJoined" : "RESOLVE_ZONE", "_stateJoined" : "STATE", "_SuperCREZJoined": "RESOLVE_ZONE"}
-
     
 if tech == "Wind":
     ## WIND:
@@ -153,7 +156,6 @@ if tech == "Wind":
     df_CFadj_select_tech = df_CFadj_select.loc[df_CFadj_select['Technology'] == tech]
     df_CFadj_select_w2w_tech = df_CFadj_select_w2w.loc[df_CFadj_select_w2w['Technology'] == tech]
 
-
 if tech == "Solar":
     ## SOLAR:
     ft_ls = {"Cat1" : "solarPV_0_0_nonEnv_r1_cat1b_singlepart_gt1km2",\
@@ -166,8 +168,7 @@ if tech == "Solar":
     df_CFadj_select_tech = df_CFadj_select.loc[df_CFadj_select['Technology'] == tech]
     df_CFadj_select_w2w_tech = df_CFadj_select_w2w.loc[df_CFadj_select_w2w['Technology'] == tech]
     
-
-##--------------------- Outputs  ----------------------------
+##--------------------- SET OUTPUT paths  ----------------------------
 
 existingMWh_wind_RESOLVEZONE_csv = os.path.join(spDisaggFolder, "intermedInputs", "existingMWh_wind_RESOLVEZONE.csv")
 existingMWh_wind_states_csv = os.path.join(spDisaggFolder, "intermedInputs", "existingMWh_wind_states.csv")
@@ -179,11 +180,17 @@ existingMWh_PV_states_csv = os.path.join(spDisaggFolder, "intermedInputs", "exis
 #######################################################################################
 ## ------------------------ I. Preprocess necessary inputs ----------------------------
 #######################################################################################
+
+PURPOSE: A) create netREN point locations (baseline projects for which we do not have areal footprints)
+    B) Estimate MWh of existing power plants using CF from resource maps
+    C) Create buffers around geothermal point locations based on land use efficiency (i.e.,
+    convert points to polygons)
 '''
-'''
+
 #######################################################################################
-## A. Create netREN locations/points and save as points
-'''
+## A. Create netREN wind and solar locations/points and save as points
+#######################################################################################
+
 ## Note: "_net" = point locations for which we have no polygon footprint data for "baseline projects", 
 ## so we will treat as "planned or commercial" projects and prioritize these when creating the supply curve by "tagging" them
 
@@ -204,10 +211,10 @@ netREN_PV = arcpy.Erase_analysis(in_features = netREN_PV_intermed, \
                      out_feature_class = os.path.join(eInfrastGDB, "REN_ExistingResources_latlongAdded_PV_gte5MW_net"))
 print("Finished creating planned and commercial project locations")
 
-'''
+
 #######################################################################################
 ## B. Calculate MWh of existing powerplants using attribute MW and RESOLVE CFs and save as csvs 
-'''
+#######################################################################################
 
 ##### select columns from RESOLVE OUTPUTS to get CF
 df_CFadj_select_CF = df_CFadj.filter(regex=('SupplyCurveCF_used|RESOLVE_ZONE|Technology|STATE'), axis =1)
@@ -279,8 +286,7 @@ w2s_wind_existingMWh_df = pandas.concat([RESOLVEZONE_wind_df_dict["CA_RESOLVEZON
 w2s_wind_existingMWh_df.to_csv(existingMWh_wind_states_csv)
 
 
-
-#### Solar
+#### SOLAR
 ## create a list to hold the RESOLVE zone MW aggregates 
 RESOLVEZONE_solar_df_dict = {}
 
@@ -337,10 +343,9 @@ w2w_PV_existingMWh_df = pandas.concat([RESOLVEZONE_solar_df_dict["CA_RESOLVEZONE
 ## save states MWh to csv
 w2w_PV_existingMWh_df.to_csv(existingMWh_PV_states_csv)
 
-'''
 #######################################################################################
 ## C. Geothermal: select the suitable points for each env and geography, create buffers that will represent area
-'''
+#######################################################################################
 
 ## Remove STATE field and rename actual state field as STATE -- do this only once!
 for cat in ft_ls:
@@ -385,42 +390,22 @@ for cat in ft_ls:
         zoneDict = {"_QRAJoined" : "OOS_RESOLVEZONE", "_stateJoined" : "state", "_SuperCREZJoined": "CA_RESOLVEZONE"}
         arcpy.CopyFeatures_management(geo_pt_select_buff_mem, geo_pt.replace(zoneType, "") + "_" + zoneDict[zoneType])
             
-
-
-''' ==============================================================================================================================================='''
-
 '''
 #######################################################################################
-## ------------------------------- Site selection -------------------------------------
+## ---------------------- II. Site selection FUNCTIONS --------------------------------
 #######################################################################################
-'''
-''' 
-#######################################################################################
-## Aa. Erase selected wind sites from PV PPAs -- no longer needed, it's incorporated in A. below
 
-def eraseSelectedWind(cat, zoneType, scen):
-    
-    ## construct path of PV  potential project area
-    PV_PPA = os.path.join(suitableSitesGDB, ft_ls[cat] + zoneType_ls[zoneType])
-    
-    windPPA = os.path.join(spDisaggGDB, "wind_0_03_nonEnv_r3_" + cat + "_singlepart_gt1km2_PA_" + zoneType + "_net_calc")
-    
-    windPPA_select = arcpy.Select_analysis(in_features = windPPA, out_feature_class = "in_memory/windPPA_select", \
-                                           where_clause= "!" + scen + "! = " + "'True'") 
-    
-    PV_PPA_erased = arcpy.Erase_analysis(in_features = PV_PPA, erase_features = windPPA_select, \
-                                    out_feature_class = "in_memory/PPA_wind")
-    
-    return PV_PPA_erased
+PURPOSE: write functions for each step in the site selection process:
+    A) Erase wind and PV existing power plants from all categories; erase selected wind sites from PV PPAs
+    B) Calculate distance to netREN and "tag" PPAs within distance threshold
+    C) Calculate tx distance, average CF, apply CF correction, and create supply curve as Pandas DF and feature class
+    D) FOR GEOTHERMAL: Calculate tx distance, average CF, apply CF correction, and create supply curve as Pandas DF and feature class
+    E) Sort supply curve and select CPAs for each Zone or state for each scenario
 '''
 
-'''
 #######################################################################################
 ## A. Erase wind and PV existing power plants from all categories; erase selected wind sites from PV PPAs
-'''
-# Loop over all the categories and loop over each region (CA, OOS, Statewide)
-#for cat in ft_ls:
-#    for zoneType in zoneType_ls:
+#######################################################################################
         
 def eraseExistingPP(tech, cat, zoneType, scen, in_existingWind, in_existingPV_CA, in_existingPV_OOS, in_selectedSitesList, calcArea):
     ## construct path of input potential project area
@@ -484,10 +469,10 @@ def eraseExistingPP(tech, cat, zoneType, scen, in_existingWind, in_existingPV_CA
     print("Finished erasing existing power plants for " + ft_ls[cat] + zoneType_ls[zoneType])
     return out
 
-'''
 ##################################################################################
 ## B. Calculate distance to netREN and "tag" PPAs within distance threshold
-'''
+##################################################################################
+
 ##### TAG PPAs if overlapping or very close to planned and commercial projects locations
 #### Calculate distance to the nearest netREN plant and apply threshold cutoff 
 
@@ -544,10 +529,9 @@ def tagPPAnearNetREN(tech, cat, zoneType, scen, in_netREN_wind_list, in_netREN_P
     
     return netPPA
 
-'''
 ##################################################################################
-## D. Calculate tx distance, average CF, apply CF correction, and create supply curve as Pandas DF and feature class
-'''
+## C. Calculate tx distance, average CF, apply CF correction, and create supply curve as Pandas DF and feature class
+##################################################################################
 
 def calcAttributes(tech, cat, zoneType, scen, in_existingTxSubList, in_CF, in_df_CFadj_select_tech, in_lue, in_txWidth_km, in_largestZoneArea_km2):
     ## construct path of input potential project areas
@@ -711,10 +695,9 @@ def calcAttributes(tech, cat, zoneType, scen, in_existingTxSubList, in_CF, in_df
     
     return netPPA
 
-'''
 ##################################################################################
 ## D. FOR GEOTHERMAL: Calculate tx distance, average CF, apply CF correction, and create supply curve as Pandas DF and feature class
-'''
+##################################################################################
 
 def calcAttributes_geothermal(tech, cat, zoneType, scen, in_existingTxSubList, in_df_CFadj_select_tech, in_lue, in_txWidth_km, in_largestZoneArea_km2):
     ## construct path of input potential project areas
@@ -819,10 +802,10 @@ def calcAttributes_geothermal(tech, cat, zoneType, scen, in_existingTxSubList, i
     print("")
     
     return netPPA
-'''
+
 #######################################################################################################
-## E. Sort supply curve and select PPAs for each Zone or state for each scenario
-'''
+## E. Sort supply curve and select CPAs for each Zone or state for each scenario
+#######################################################################################################
 
 def selectSites(zoneType, siteSuit, zoneName, sortingCol_ls, scenarioName, scenarioName_nospaces, in_existingMWh_df, df_RESOLVE_targets, ssList, QA_df):
     
@@ -910,6 +893,8 @@ def selectSites(zoneType, siteSuit, zoneName, sortingCol_ls, scenarioName, scena
                 perDiff = "NaN"
                 print("The existing generation exceeds the total generation from RESOLVE")
         
+        ## Calculate Quality Assessment data frame (QA_df), which allows the selected sites total to be compared against the RESOLVE portfolio outputs
+        ## This ensures that the site selection was performed accurately (not over or under selecting generation)
         ## assign to QA df using the following procuedure: .loc[row_indexer,col_indexer] = value
         QA_df.loc[QA_df["RESOLVE Resource"]==zone, scen] = netTarget
         QA_df.loc[QA_df["RESOLVE Resource"]==zone, scen + "_selected"] = totalMWh
@@ -920,32 +905,14 @@ def selectSites(zoneType, siteSuit, zoneName, sortingCol_ls, scenarioName, scena
             
     return ssList, QA_df
 
-''' ==============================================================================================================================================='''
-
 '''
 #######################################################################################################
-## ------------------------------- SET UP RUNS FOR EACH TECHNOLOGY ------------------------------------
+## --------------------- III. RUN SITE SELECTION FUNCTIONS FOR EACH TECHNOLOGY ------------------------
 #######################################################################################################
+
+PURPOSE: Apply functions from PART II to each technology and RESOLVE portfolio/sceanrio
 '''
-''' ARCHIVED:
-scenList_QRA = ["In-State x Capped Basecase",  "Full WECC x Capped Basecase", "Part WECC x Capped Basecase", \
-            "In-State x Capped highDER", "Full WECC x Capped highDER", "Part WECC x Capped highDER", \
-            "In-State x Capped lowBatt", "Full WECC x Capped lowBatt", "Part WECC x Capped lowBatt",\
-            "In-State BaseUsex Basecase", "Full WECC BaseUsex Basecase", "Part WECC BaseUsex Basecase", \
-                 "In-State BaseUsex highDER", "Full WECC BaseUsex highDER", "Part WECC BaseUsex highDER", \
-                 "In-State BaseUsex lowBatt",  "Full WECC BaseUsex lowBatt", "Part WECC BaseUsex lowBatt"]
-
-scenList_w2w = ["In-State xW2W No Cap Basecase",\
-                "Full WECC xW2W No Cap Basecase",\
-                "Part WECC xW2W No Cap Basecase",\
-                 "In-State xW2W No Cap highDER", "Full WECC xW2W No Cap highDER", "In-State xW2W No Cap lowBatt", "Full WECC xW2W No Cap lowBatt"]
-                ## "In-State Cat3W2W No Cap highDER", "Full WECC Cat3W2W No Cap highDER", "In-State Cat3W2W No Cap lowBatt", "Full WECC Cat3W2W No Cap lowBatt"
-
-## join the CA RESOLVE zones with the OOS (either RESOLVE zone or state) to create a single supply curve per sceanrio
-geoDict = {"QRA": ["CA_RESOLVEZONE", "OOS_RESOLVEZONE", scenList_QRA], "w2w": ["CA_RESOLVEZONE", "state", scenList_w2w]} 
-geoDict_geothermal = {"QRA": ["_SuperCREZJoined", "_QRAJoined", scenList_QRA], "w2w": ["_SuperCREZJoined", "_stateJoined", scenList_w2w]} 
-'''
-
+## Create scenario list for constrained and unconstrained (OOS = constrained; state = unconstrained; CA = CA only)
 state_scenList = ["Full WECC xW2W No Cap Basecase",\
                 "Part WECC xW2W No Cap Basecase",\
                  "Full WECC xW2W No Cap highDER", "Full WECC xW2W No Cap lowBatt"]
@@ -968,17 +935,17 @@ OOS_scenList = ["Full WECC x Capped Basecase", "Part WECC x Capped Basecase", \
                        "Full WECC BaseUsex Basecase", "Part WECC BaseUsex Basecase", \
                              "Full WECC BaseUsex highDER", "Part WECC BaseUsex highDER", \
                              "Full WECC BaseUsex lowBatt", "Part WECC BaseUsex lowBatt"]
-'''
-#######################################################################################################
-## B. Implement for Geothermal
-#######################################################################################################
-''' 
 
-## for Quality assessment: create an empty pandas df with the RESOLVE ZONE names in the rows and the scenario names in the columns
-QA_geothermal = pandas.DataFrame(columns = df_RESOLVEscenarios_selected.columns, index = df_RESOLVEscenarios_selected.index)
-QA_geothermal["RESOLVE Resource"] = df_RESOLVEscenarios_selected["RESOLVE Resource"]
+#######################################################################################################
+## A. Implement site selection functions for Geothermal
+#######################################################################################################
+
+## for Quality assessment data frame: create an empty pandas df with the RESOLVE ZONE names in the rows and the scenario names in the columns
+## Quality assessment values are calculated in the selectSites function.
+QA_df_output = pandas.DataFrame(columns = df_RESOLVEscenarios_selected.columns, index = df_RESOLVEscenarios_selected.index)
+QA_df_output["RESOLVE Resource"] = df_RESOLVEscenarios_selected["RESOLVE Resource"]
    
-# Loop over all the categories and loop over each region (CA, OOS, Statewide)
+# Loop over all the environmental categories and loop over each region (CA, OOS, Statewide) to get full suite of scenarios
 for cat in ft_ls:
     for zoneType in zoneType_ls:
         print("")
@@ -1021,9 +988,9 @@ for cat in ft_ls:
                 df_netPPA = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] +"_" + scenName_field +  "_supplyCurve.csv"))
                
                 ## select zones
-                selectedSitesList, QA_geothermal = selectSites(zoneType = "", siteSuit = df_netPPA, zoneName  = "RESOLVE_ZONE", sortingCol_ls = ["avgMWhperKm2"], scenarioName = scen, \
+                selectedSitesList, QA_df_output = selectSites(zoneType = "", siteSuit = df_netPPA, zoneName  = "RESOLVE_ZONE", sortingCol_ls = ["avgMWhperKm2"], scenarioName = scen, \
                                             scenarioName_nospaces = scenName_field, in_existingMWh_df = "", \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_type, ssList = list(), QA_df = QA_geothermal)
+                                            df_RESOLVE_targets = df_RESOLVEscenarios_type, ssList = list(), QA_df = QA_df_output)
         
                 ## combine list elements into one df                
                 if selectedSitesList:
@@ -1032,8 +999,7 @@ for cat in ft_ls:
                     selectedSites_df = pandas.DataFrame(columns= ["zoneID", scenName_field])
                     print(" NO TARGETS FOR THIS GEOGRAPHY FOR THIS SCENARIO")
                     
-                    
-                ## save selected sites to csv in the supplyCruves folder and named using the scenario 
+                ## save selected sites to csv in the supplyCurves folder and named using the scenario 
                 csvFileName = os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] + "_" + scenName_field + "_selectedSites.csv")
                 selectedSites_df.to_csv(csvFileName, index = False)
                 
@@ -1065,18 +1031,20 @@ for cat in ft_ls:
                 ## Delete the netPPA feature class
                 arcpy.Delete_management(in_data = netPPA)   
 
-QA_geothermal.to_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_geothermal.csv"))
+## Save QA to csv for checking:
+QA_df_output.to_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_df_output.csv")) ## originally named QA_geothermal.csv
 
 
-'''
 #######################################################################################################
-## B. Implement for WIND
+## B. Implement site selection functions for WIND
 #######################################################################################################
-''' 
-QA_geothermal = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_geothermal.csv"))
+
+## Read the QA_df_output file that was saved to disc and append to it
+QA_df_output = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_df_output.csv"))
 tech = "Wind"
+
 if tech == "Wind":
-    ## WIND:
+    ## Set WIND CPA paths:
     ft_ls = {"Cat1" : "wind_0_03_nonEnv_r3_cat1b_singlepart_gt1km2",\
             "Cat2" : "wind_0_03_nonEnv_r3_cat2f_singlepart_gt1km2",\
             "Cat3" : "wind_0_03_nonEnv_r3_cat3c_singlepart_gt1km2", \
@@ -1086,7 +1054,6 @@ if tech == "Wind":
     lue = 6.1 ## MW/km2
     df_CFadj_select_tech = df_CFadj_select.loc[df_CFadj_select['Technology'] == tech]
     df_CFadj_select_w2w_tech = df_CFadj_select_w2w.loc[df_CFadj_select_w2w['Technology'] == tech]
-
 
 # Loop over all the categories and loop over each region (CA, OOS, Statewide)
 for cat in ft_ls:
@@ -1121,8 +1088,7 @@ for cat in ft_ls:
             scenName_field = scen.replace(" ", "_").replace("-", "")
             
             csvFileName = os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] + "_" + scenName_field + "_selectedSites.csv")
-            
-            
+        
             ## only if the scenario is found in the RESOLVE output csv (only to control for the fact that not cateogires were run with sensivities under the w2w geography)
             if scen in df_RESOLVEscenarios_total.columns and not(os.path.isfile(csvFileName)): 
             #if scen in df_RESOLVEscenarios_total.columns: 
@@ -1146,7 +1112,7 @@ for cat in ft_ls:
                                  in_netREN_wind_list = netREN_wind_list, in_netREN_PV = netREN_PV, \
                                  in_netRENthreshold_m = netRENthreshold_m)
                 
-                '''## FUNCTION C-E: calc tx distance and other attributes '''        
+                '''## FUNCTION C: calc tx distance and other attributes'''        
                 calcAttributes(tech = tech, cat = cat, zoneType = zoneType, scen = scenName_field, \
                                in_existingTxSubList = existingTxSubList, in_CF = CF, \
                                in_df_CFadj_select_tech = df_CFadj_select_tech_scen, in_lue = lue, \
@@ -1155,11 +1121,12 @@ for cat in ft_ls:
                 #### retrieve the supply curve saved as csv into a pandas df:
                 df_netPPA = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] +"_" + scenName_field +  "_supplyCurve.csv"))
                
+                '''## FUNCTION E: select sites'''        
                 ## select zones
-                selectedSitesList, QA_geothermal = selectSites(zoneType = zoneType, siteSuit = df_netPPA, zoneName  = "RESOLVE_ZONE", \
+                selectedSitesList, QA_df_output = selectSites(zoneType = zoneType, siteSuit = df_netPPA, zoneName  = "RESOLVE_ZONE", \
                                                                sortingCol_ls = ["netREN", "avgMWhperKm2"], scenarioName = scen, \
                                             scenarioName_nospaces = scenName_field, in_existingMWh_df = existingMWh_df, \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_type, ssList = list(), QA_df = QA_geothermal)
+                                            df_RESOLVE_targets = df_RESOLVEscenarios_type, ssList = list(), QA_df = QA_df_output)
         
                 ## combine list elements into one df                
                 if selectedSitesList:
@@ -1167,7 +1134,6 @@ for cat in ft_ls:
                 else:
                     selectedSites_df = pandas.DataFrame(columns= ["zoneID", scenName_field])
                     print(" NO TARGETS FOR THIS GEOGRAPHY FOR THIS SCENARIO")
-                    
                     
                 ## save selected sites to csv in the supplyCruves folder and named using the scenario 
                 csvFileName = os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] + "_" + scenName_field + "_selectedSites.csv")
@@ -1200,15 +1166,15 @@ for cat in ft_ls:
                 
                 ## Delete the netPPA feature class
                 arcpy.Delete_management(in_data = netPPA)   
-            
-QA_geothermal.to_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_geothermal.csv"))
 
-'''
+## write updated QA file to disc, now with wind results appended
+QA_df_output.to_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_df_output.csv")) ## originally named QA_geothermal.csv
+
 #######################################################################################################
-## B. Implement for SOLAR
+## C. Implement site selection functions for SOLAR
 #######################################################################################################
-''' 
-QA_geothermal = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_geothermal.csv"))
+
+QA_df_output = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_df_output.csv"))
 
 tech = "Solar"
 if tech == "Solar":
@@ -1293,7 +1259,7 @@ for cat in ft_ls:
                                  in_netREN_wind_list = netREN_wind_list, in_netREN_PV = netREN_PV, \
                                  in_netRENthreshold_m = netRENthreshold_m)
                 
-                '''## FUNCTION C-E: calc tx distance and other attributes '''        
+                '''## FUNCTION C: calc tx distance and other attributes '''        
                 calcAttributes(tech = tech, cat = cat, zoneType = zoneType, scen = scenName_field, \
                                in_existingTxSubList = existingTxSubList, in_CF = CF, \
                                in_df_CFadj_select_tech = df_CFadj_select_tech_scen, in_lue = lue, \
@@ -1302,11 +1268,12 @@ for cat in ft_ls:
                 #### retreive the supply curve saved as csv into a pandas df:
                 df_netPPA = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] +"_" + scenName_field +  "_supplyCurve.csv"))
                
+                '''## FUNCTION E: select sites'''    
                 ## select zones
-                selectedSitesList, QA_geothermal = selectSites(zoneType = zoneType, siteSuit = df_netPPA, zoneName  = "RESOLVE_ZONE", \
+                selectedSitesList, QA_df_output = selectSites(zoneType = zoneType, siteSuit = df_netPPA, zoneName  = "RESOLVE_ZONE", \
                                                                sortingCol_ls = ["netREN", "avgMWhperKm2"], scenarioName = scen, \
                                             scenarioName_nospaces = scenName_field, in_existingMWh_df = existingMWh_df, \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_type, ssList = list(), QA_df = QA_geothermal)
+                                            df_RESOLVE_targets = df_RESOLVEscenarios_type, ssList = list(), QA_df = QA_df_output)
         
                 ## combine list elements into one df                
                 if selectedSitesList:
@@ -1314,7 +1281,6 @@ for cat in ft_ls:
                 else:
                     selectedSites_df = pandas.DataFrame(columns= ["zoneID", scenName_field])
                     print(" NO TARGETS FOR THIS GEOGRAPHY FOR THIS SCENARIO")
-                    
                     
                 ## save selected sites to csv in the supplyCruves folder and named using the scenario 
                 csvFileName = os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] + "_" + scenName_field + "_selectedSites.csv")
@@ -1347,408 +1313,7 @@ for cat in ft_ls:
                 
                 ## Delete the netPPA feature class
                 arcpy.Delete_management(in_data = netPPA)   
-            
-QA_geothermal.to_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_geothermal.csv"))
 
-'''
-ARCHIVED
-
-## Function that will create a table of selected sites if provided the sitesuitabilityAttributeTable (from saved csv) and the targets
-def selectSites(zoneType, siteSuit, zoneName, scenarioName, in_existingMWh_df, scenarioName_nospaces, df_RESOLVE_targets, ssList):
-    
-    ## for each Zone rank the siteSuit table 
-    ## Get the unique zone names
-    zoneList = set(siteSuit[zoneName])
-    for zone in zoneList:
-        print(zone)
-        siteSuitZone = siteSuit.loc[siteSuit[zoneName] == zone]
-        
-        ## sort the zone by avgMWhperKm2 + cat
-        siteSuitZone_sorted = siteSuitZone.sort_values(by = ["netREN", "avgMWhperKm2"], axis=0, ascending=False)
-        
-        siteSuitZone_sorted = siteSuitZone_sorted.reset_index(drop=True)
-        
-        ## Calculate the cumulative MWh 
-        siteSuitZone_sorted["MWh_cum"] = siteSuitZone_sorted.MWh.cumsum()
-        
-        ## retrieve the MWh target (either total or selected) from the RESOLVE outputs CSV
-        target = df_RESOLVE_targets.loc[df_RESOLVE_targets["RESOLVE Resource"] == zone, scenarioName].iloc[0]
-        
-        if np.isnan(target):
-            ## skip site selection if there is no target for this zone
-            print("No target for " + zone)
-        else:
-            ## if it's CA's then the target is total, so subtract the existing MWh from total
-            if zoneType == "CA_RESOLVEZONE": 
-                ## retrieve the existing MWh from saved CSV calculated earlier
-                existingMWh_series = in_existingMWh_df.loc[in_existingMWh_df["RESOLVE_ZONE"] == zone, "MWh"]
-                
-                if len(existingMWh_series.index) == 0:
-                    existingMWh = 0
-                elif len(existingMWh_series.index) > 1:
-                    existingMWh = existingMWh_series.sum()
-                else:
-                    existingMWh = existingMWh_series.iloc[0]
-                    
-                ## subtract the calculated existing MWh (from footprints) from the target
-                netTarget = target - existingMWh
-            
-            ## if it's OOS (QRA or w2w), then the target is selected Mwh from RESOLVE outputs 
-            else:
-                netTarget = target
-            
-            print("Net target is " + str(netTarget))
-        
-            ## Select the sites that meet the MWh target
-            siteSuitZone_sorted[scenarioName_nospaces] = siteSuitZone_sorted["MWh_cum"] < netTarget
-            ## select the marginal project area to ensure that the target is met: 
-            ## the below line finds the id of the maximum selected project area and selects the next project area (index + 1) by assigning it true
-            if len(siteSuitZone_sorted.loc[siteSuitZone_sorted[scenarioName_nospaces] == True].index) > 0 :
-                indexMax = siteSuitZone_sorted.loc[siteSuitZone_sorted[scenarioName_nospaces] == True]["MWh_cum"].idxmax()
-            else:
-                indexMax = -1
-                
-            siteSuitZone_sorted.at[indexMax + 1, scenarioName_nospaces] = True
-            print("total number of rows is ", str(len(siteSuitZone_sorted.index)))
-            print("max index is ", str(indexMax))
-            
-            ## add to list of selected PPAs for each zone
-            ssList.append(siteSuitZone_sorted)
-            
-    return ssList
-
-
-#######################################################################################################
-## A. Implement for Wind
-#######################################################################################################
-
-# Loop over all the categories and loop over each region (CA, OOS, Statewide)
-for cat in ft_ls:
-    for zoneType in zoneType_ls:
-        
-        print("")
-        print("Working on " + cat + " and " + zoneType)
-        ## FUNCTION A: erase existing power plants
-        outErase = eraseExistingPP(tech = tech, cat = cat, zoneType = zoneType, scen ="",\
-                                   in_existingWind = existingWind, in_existingPV_CA = existingPV_CA,\
-                                   in_existingPV_OOS = existingPV_OOS)
-        
-        ## FUNCTION B: tag PPAs close to netREN (point locations)
-        tagPPAnearNetREN(tech = tech, cat = cat, zoneType = zoneType, scen = "", \
-                         in_netREN_wind_list = netREN_wind_list, in_netREN_PV = netREN_PV, \
-                         in_netRENthreshold_m = netRENthreshold_m)
-        
-        ## FUNCTION C-E: tag PPAs close to netREN (point locations)       
-        calcAttributes(tech = tech, cat = cat, zoneType = zoneType, scen ="", \
-                       in_existingTxSubList = existingTxSubList, in_CF = CF, \
-                       in_df_CFadj_select_tech = df_CFadj_select_tech, in_lue = lue, \
-                       in_txWidth_km = txWidth_km, in_largestZoneArea_km2 = largestZoneArea_km2)
-            
-for geo in geoDict:
-    for cat in ft_ls:
-        #### combine the two regional supply curves (in and OOS) as pandas df:
-        df_netPPA_CA = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + "_PA_" + geoDict[geo][0] +  "_supplyCurve.csv"))
-        df_netPPA_OOS = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + "_PA_" + geoDict[geo][1] + "_supplyCurve.csv"))
-        
-        scenList = geoDict[geo][2]
-        for scen in scenList:
-            
-            scen = scen.replace("x", cat)
-            scenName_field = scen.replace(" ", "_").replace("-", "")
-            print("")
-            print(scen)
-            
-            ## only if the scenario is found in the RESOLVE output csv (only to control for the fact that not cateogires were run with sensivities under the w2w geography)
-            if scen in df_RESOLVEscenarios_total.columns: 
-                
-                if geo == "QRA":
-                    existingMWh_df = pandas.read_csv(existingMWh_wind_RESOLVEZONE_csv)
-                if geo == "w2w":
-                    existingMWh_df = pandas.read_csv(existingMWh_wind_states_csv)
-                    
-                ## FUNCTION E: select sites
-                ## CA zones
-                selectedSites_CA = selectSites(zoneType = geoDict[geo][0], siteSuit = df_netPPA_CA, zoneName  = "RESOLVE_ZONE", scenarioName = scen, \
-                                            in_existingMWh_df = existingMWh_df, scenarioName_nospaces = scenName_field, \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_total, ssList = list())
-                
-                ## OOS zones
-                selectedSites_OOS = selectSites(zoneType = geoDict[geo][1], siteSuit = df_netPPA_OOS, zoneName  = "RESOLVE_ZONE", scenarioName = scen, \
-                                            in_existingMWh_df = existingMWh_df, scenarioName_nospaces = scenName_field, \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_selected, ssList = list())
-                
-        
-                ## combine list elements into one df
-                selectedSites_df_CA = pandas.concat(selectedSites_CA)
-                if selectedSites_OOS:
-                    selectedSites_df_OOS = pandas.concat(selectedSites_OOS)
-                    selectedSites_df = pandas.concat([selectedSites_df_CA, selectedSites_df_OOS], axis = 0)
-                else:
-                    selectedSites_df = selectedSites_df_CA
-                
-                ## save selected sites to csv in the supplyCruves folder and named using the scenario 
-                csvFileName = os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + "_" + scenName_field + "_selectedSites.csv")
-                selectedSites_df.to_csv(csvFileName, index = False)
-                
-                ## join this df back to feature class attribute table
-                arcpy.TableToTable_conversion(in_rows = csvFileName, out_path = spDisaggGDB_scratch, out_name = "tempTable")
-                
-                ## select these sites from the feature class by joining the scenario field and then and then save it to a  feature class
-                
-                ## Select sites from CA PPAs
-                netPPA_CA = os.path.join(spDisaggGDB, ft_ls[cat] + "_PA_" + geoDict[geo][0] + netPPAsuffix)
-                ## if the scenName_field  already exists, delete before joining fields
-                netPPA_CA_fieldList = [field.name for field in arcpy.ListFields(netPPA_CA)]
-                if scenName_field in netPPA_CA_fieldList:
-                    print("Deleting existing field: " + scenName_field)
-                    arcpy.DeleteField_management(netPPA_CA, scenName_field)
-                
-                ## Select sites from OOS or STATE PPAs 
-                netPPA_OOS = os.path.join(spDisaggGDB, ft_ls[cat] + "_PA_" + geoDict[geo][1] + netPPAsuffix)
-                ## if the scenName_field  already exists, delete before joining fields
-                netPPA_OOS_fieldList = [field.name for field in arcpy.ListFields(netPPA_OOS)]
-                if scenName_field in netPPA_OOS_fieldList:
-                    print("Deleting existing field: " + scenName_field)
-                    arcpy.DeleteField_management(netPPA_OOS, scenName_field)
-                    
-                    
-                arcpy.JoinField_management(in_data = netPPA_CA, in_field = "zoneID" , \
-                                         join_table = os.path.join(spDisaggGDB_scratch, "tempTable"), join_field = "zoneID",\
-                                         fields = [scenName_field])
-                
-                
-                arcpy.JoinField_management(in_data = netPPA_OOS, in_field = "zoneID" , \
-                                         join_table = os.path.join(spDisaggGDB_scratch, "tempTable"), join_field = "zoneID",\
-                                         fields = [scenName_field])
-
-
-#######################################################################################################
-## B. Implement for Geothermal - OLD
-#######################################################################################################
-
-# Loop over all the categories and loop over each region (CA, OOS, Statewide)
-for cat in ft_ls:
-    for zoneType in geoZoneType_ls:
-        
-        print("")
-        print("Working on " + cat + " and " + zoneType)
-        
-        ## FUNCTION C-E: calc tx distance and other attributes
-        calcAttributes_geothermal(tech = tech, cat = cat, zoneType = zoneType, scen ="", \
-                       in_existingTxSubList = existingTxSubList, \
-                       in_df_CFadj_select_tech = df_CFadj_select_tech, in_lue = lue, \
-                       in_txWidth_km = txWidth_km, in_largestZoneArea_km2 = largestZoneArea_km2)
-        
-        
-for geo in geoDict_geothermal:
-    for cat in ft_ls:
-        #### read the two regional supply curves (in and OOS) as pandas df:
-
-        df_netPPA_CA = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + geoDict_geothermal[geo][0] +  "_polygons_supplyCurve.csv"))
-        df_netPPA_OOS = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + geoDict_geothermal[geo][1] + "_polygons_supplyCurve.csv"))
-        
-        scenList = geoDict[geo][2]
-        for scen in scenList:
-            
-            scen = scen.replace("x", cat)
-            scenName_field = scen.replace(" ", "_").replace("-", "")
-            print("")
-            print(scen)
-            
-            ## only if the scenario is found in the RESOLVE output csv (only to control for the fact that not all categories were run with sensivities under the w2w geography)
-            if scen in df_RESOLVEscenarios_total.columns: 
-                    
-                ## FUNCTION E: select sites
-                ## CA zones
-                selectedSites_CA = selectSites_Geothermal(siteSuit = df_netPPA_CA, zoneName  = "RESOLVE_ZONE", scenarioName = scen, \
-                                            scenarioName_nospaces = scenName_field, \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_selected, ssList = list())
-                
-                ## OOS zones
-                selectedSites_OOS = selectSites_Geothermal(siteSuit = df_netPPA_OOS, zoneName  = "RESOLVE_ZONE", scenarioName = scen, \
-                                            scenarioName_nospaces = scenName_field, \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_selected, ssList = list())
-                
-        
-                ## combine list elements into one df
-                
-                if selectedSites_CA:
-                    selectedSites_df_CA = pandas.concat(selectedSites_CA)
-                else:
-                    selectedSites_df_CA = pandas.DataFrame()
-                    print("selectedSites_CA is empty")
-                    
-                if selectedSites_OOS:
-                    selectedSites_df_OOS = pandas.concat(selectedSites_OOS)
-                    selectedSites_df = pandas.concat([selectedSites_df_CA, selectedSites_df_OOS], axis = 0)
-                else:
-                    selectedSites_df = selectedSites_df_CA
-                    print("selectedSites_OOS is empty")
-                
-                if not(selectedSites_df.empty):
-                    ## save selected sites to csv in the supplyCruves folder and named using the scenario 
-                    csvFileName = os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + "_" + scenName_field + "_selectedSites.csv")
-                    selectedSites_df.to_csv(csvFileName, index = False)
-                    
-                    ## join this df back to feature class attribute table
-                    arcpy.TableToTable_conversion(in_rows = csvFileName, out_path = spDisaggGDB_scratch, out_name = "tempTable")
-                    
-                    ## select these sites from the feature class by joining the scenario field and then and then save it to a  feature class
-                    
-                    ## Select sites from CA PPAs
-                    netPPA_CA = os.path.join(spDisaggGDB, ft_ls[cat] + geoDict_geothermal[geo][0] + "_polygons_net") 
-                    ## if the scenName_field  already exists, delete before joining fields
-                    netPPA_CA_fieldList = [field.name for field in arcpy.ListFields(netPPA_CA)]
-                    if scenName_field in netPPA_CA_fieldList:
-                        print("Deleting existing field: " + scenName_field)
-                        arcpy.DeleteField_management(netPPA_CA, scenName_field)
-                    
-                    ## Select sites from OOS or STATE PPAs 
-                    netPPA_OOS = os.path.join(spDisaggGDB, ft_ls[cat] + geoDict_geothermal[geo][1] + "_polygons_net") 
-                    ## if the scenName_field  already exists, delete before joining fields
-                    netPPA_OOS_fieldList = [field.name for field in arcpy.ListFields(netPPA_OOS)]
-                    if scenName_field in netPPA_OOS_fieldList:
-                        print("Deleting existing field: " + scenName_field)
-                        arcpy.DeleteField_management(netPPA_OOS, scenName_field)
-                        
-                    arcpy.JoinField_management(in_data = netPPA_CA, in_field = "zoneID" , \
-                                             join_table = os.path.join(spDisaggGDB_scratch, "tempTable"), join_field = "zoneID",\
-                                             fields = [scenName_field])
-                    
-                    
-                    arcpy.JoinField_management(in_data = netPPA_OOS, in_field = "zoneID" , \
-                                             join_table = os.path.join(spDisaggGDB_scratch, "tempTable"), join_field = "zoneID",\
-                                             fields = [scenName_field])
-                else:
-                    print("selectedSites_df is empty! No geothermal selected at all in this entire scenario")
-
-
-
-#######################################################################################################
-## B. Implement for solar
-#######################################################################################################
-
-tech = "Solar"
-if tech == "Solar":
-    ## SOLAR:
-    ft_ls = {"Cat1" : "solarPV_0_0_nonEnv_r1_cat1b_singlepart_gt1km2",\
-            "Cat2" : "solarPV_0_0_nonEnv_r1_cat2f_singlepart_gt1km2",\
-            "Cat3" : "solarPV_0_0_nonEnv_r1_cat3c_singlepart_gt1km2", \
-             "Cat4": "solarPV_0_0_nonEnv_r1_cat4_singlepart_gt1km2"}
-    CF = os.path.join(mainDir, "dataCollection", "siteSuitabilityInputs_nonEnv.gdb\\CF_FixedPV_SAM_AC_CF_250m")
-    zoneFieldName_RESOLVE = "RESOLVE_ZONE_solar_1"
-    lue = 30 ## MW/km2
-    df_CFadj_select_tech = df_CFadj_select.loc[df_CFadj_select['Technology'] == tech]
-
-
-
-# Loop over all the categories and loop over each region (CA, OOS, Statewide)
-for cat in ft_ls:
-    for zoneType in zoneType_ls:
-        print("")
-        print("Working on " + cat + " and " + zoneType)
-        
-        if zoneType == "state":
-            scenList = ["Full WECC xW2W No Cap Basecase",\
-                "Part WECC xW2W No Cap Basecase",\
-                 "Full WECC xW2W No Cap highDER", "Full WECC xW2W No Cap lowBatt"]
-            existingMWh_df = pandas.read_csv(existingMWh_PV_states_csv)
-            df_RESOLVEscenarios_type = df_RESOLVEscenarios_selected
-        
-        if zoneType == "CA_RESOLVEZONE":
-            scenList = ["In-State x Capped Basecase",  "Full WECC x Capped Basecase", "Part WECC x Capped Basecase", \
-                        "In-State x Capped highDER", "Full WECC x Capped highDER", "Part WECC x Capped highDER", \
-                        "In-State x Capped lowBatt", "Full WECC x Capped lowBatt", "Part WECC x Capped lowBatt",\
-                        "In-State BaseUsex Basecase", "Full WECC BaseUsex Basecase", "Part WECC BaseUsex Basecase", \
-                         "In-State BaseUsex highDER", "Full WECC BaseUsex highDER", "Part WECC BaseUsex highDER", \
-                         "In-State BaseUsex lowBatt",  "Full WECC BaseUsex lowBatt", "Part WECC BaseUsex lowBatt",\
-                        "In-State xW2W No Cap Basecase",\
-                        "Full WECC xW2W No Cap Basecase",\
-                        "Part WECC xW2W No Cap Basecase",\
-                         "In-State xW2W No Cap highDER", "Full WECC xW2W No Cap highDER", \
-                         "In-State xW2W No Cap lowBatt", "Full WECC xW2W No Cap lowBatt"]
-            existingMWh_df = pandas.read_csv(existingMWh_PV_RESOLVEZONE_csv)
-            df_RESOLVEscenarios_type = df_RESOLVEscenarios_total
-
-        if zoneType == "OOS_RESOLVEZONE":
-            scenList = ["Full WECC x Capped Basecase", "Part WECC x Capped Basecase", \
-                        "Full WECC x Capped highDER", "Part WECC x Capped highDER", \
-                        "Full WECC x Capped lowBatt", "Part WECC x Capped lowBatt",\
-                       "Full WECC BaseUsex Basecase", "Part WECC BaseUsex Basecase", \
-                             "Full WECC BaseUsex highDER", "Part WECC BaseUsex highDER", \
-                             "Full WECC BaseUsex lowBatt", "Part WECC BaseUsex lowBatt"]
-            existingMWh_df = pandas.read_csv(existingMWh_PV_RESOLVEZONE_csv)
-            df_RESOLVEscenarios_type = df_RESOLVEscenarios_selected
-        
-        for scen in scenList:
-            
-            scen = scen.replace("x", cat)
-            print("")
-            print(scen)
-                
-            ## only if the scenario is found in the RESOLVE output csv (only to control for the fact that not cateogires were run with sensivities under the w2w geography)
-            if scen in df_RESOLVEscenarios_total.columns: 
-
-                scenName_field = scen.replace(" ", "_").replace("-", "")
-                
-                ## FUNCTION A: erase existing power plants 
-                outErase = eraseExistingPP(tech = tech, cat = cat, zoneType = zoneType, scen = scenName_field,\
-                                           in_existingWind = existingWind, in_existingPV_CA = existingPV_CA,\
-                                           in_existingPV_OOS = existingPV_OOS)
-                
-                ## FUNCTION B: tag PPAs close to netREN (point locations)
-                tagPPAnearNetREN(tech = tech, cat = cat, zoneType = zoneType, scen = scenName_field, \
-                                 in_netREN_wind_list = netREN_wind_list, in_netREN_PV = netREN_PV, \
-                                 in_netRENthreshold_m = netRENthreshold_m)
-                
-                ## FUNCTION C-E: tag PPAs close to netREN (point locations)      
-                calcAttributes(tech = tech, cat = cat, zoneType = zoneType, scen = scenName_field, \
-                               in_existingTxSubList = existingTxSubList, in_CF = CF, \
-                               in_df_CFadj_select_tech = df_CFadj_select_tech, in_lue = lue, \
-                               in_txWidth_km = txWidth_km, in_largestZoneArea_km2 = largestZoneArea_km2)
-                
-                #### get the supply curve saved as csv into a pandas df:
-                df_netPPA = pandas.read_csv(os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] +"_" + scenName_field +  "_supplyCurve.csv"))
-                                                     
-                ## select zones
-                selectedSitesList = selectSites(zoneType = zoneType, siteSuit = df_netPPA, zoneName  = "RESOLVE_ZONE", scenarioName = scen, \
-                                            in_existingMWh_df = existingMWh_df, scenarioName_nospaces = scenName_field, \
-                                            df_RESOLVE_targets = df_RESOLVEscenarios_type, ssList = list())
-        
-                ## combine list elements into one df; if list is empty, then create an empty pandas dataframe 
-                if selectedSitesList:
-                    selectedSites_df = pandas.concat(selectedSitesList)
-                else:
-                    selectedSites_df = pandas.DataFrame(columns= ["zoneID", scenName_field])
-                    print(" NO TARGETS FOR THIS GEOGRAPHY FOR THIS SCEANRIO")
-                    
-                ## save selected sites to csv in the supplyCruves folder and named using the scenario 
-                csvFileName = os.path.join(spDisaggFolder, "supplyCurves", ft_ls[cat] + zoneType_ls[zoneType] + "_" + scenName_field + "_selectedSites.csv")
-                selectedSites_df.to_csv(csvFileName, index = False)
-                
-                ## join this df back to feature class attribute table
-                arcpy.TableToTable_conversion(in_rows = csvFileName, out_path = spDisaggGDB_scratch, out_name = "tempTable")
-                
-                ## select these sites from the feature class by joining the scenario field and then and then save it to a  feature class
-                
-                ## Select sites from CA PPAs
-                netPPA = os.path.join(spDisaggGDB, ft_ls[cat] + zoneType_ls[zoneType] + netPPAsuffix + "_" + scenName_field)
-                
-                ## if the scenName_field  already exists, delete before joining fields
-                netPPA_fieldList = [field.name for field in arcpy.ListFields(netPPA)]
-                if scenName_field in netPPA_fieldList:
-                    print(" Deleting existing field: " + scenName_field)
-                    arcpy.DeleteField_management(netPPA, scenName_field)
-                    
-                arcpy.JoinField_management(in_data = netPPA, in_field = "zoneID" , \
-                                         join_table = os.path.join(spDisaggGDB_scratch, "tempTable"), join_field = "zoneID",\
-                                         fields = [scenName_field])
-                
-                ## select the sites that have True 
-                arcpy.Select_analysis(in_features = netPPA, out_feature_class = netPPA + "_selected", \
-                                               where_clause=  scenName_field + " = 'True'") 
-                
-                ## Delete the netPPA feature class
-                arcpy.Delete_management(in_data = netPPA)
-'''
+## write updated QA file to disc, now with solar results appended        
+QA_df_output.to_csv(os.path.join(spDisaggFolder, "supplyCurves", "QA_df_output.csv")) ## originally named QA_geothermal.csv
 
