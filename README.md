@@ -1,8 +1,8 @@
 # Low-impact land use pathways to deep decarbonization of electricity
 
-This repository contains the 1) links to interactively view some spatial results and download the data; 2) additional data tables as part of Supporting Information, 3) Python scripts used to perform project site selection and strategic environmental assessment as well the results from the analysis used to produce the figures in the published paper:
+This repository contains the 1) links to interactively view some spatial results and download the data; 2) additional data tables as part of Supporting Information, 3) Python scripts used to perform project site selection and strategic environmental assessment as well the results from the analysis used to produce the figures in the open access published paper:
 
-> Wu, G.C., Leslie, E., Sawyerr, O., Cameron, D.R., Brand, E., Cohen, B., Allen, D., Ochoa, M., Olson, A., 2020. Low-impact land use pathways to deep decarbonization of electricity. Environ. Res. Lett. https://doi.org/10.1088/1748-9326/ab87d1
+> Wu, G.C., Leslie, E., Sawyerr, O., Cameron, D.R., Brand, E., Cohen, B., Allen, D., Ochoa, M., Olson, A., 2020. Low-impact land use pathways to deep decarbonization of electricity. *Environ. Res. Lett.* https://doi.org/10.1088/1748-9326/ab87d1
 
 ## Spatial inputs and results
 - View the wind and solar site suitability maps via an interactive webmap here.
