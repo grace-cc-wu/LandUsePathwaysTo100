@@ -15,16 +15,16 @@ The following are the steps in the analysis and the scripts and/or tools to impl
 
 1. Conduct site suitability analysis with only non-environmental inputs using Script Tool B, Stage 1 of the [MapRE GIS zoning tool](https://mapre.lbl.gov/gis-tools/) (Requires ArcGIS to run). This step uses raster-based geo-processing.
 
-2. createSupplyCurve (requires arcpy): a) creates renewble resource areas using using vector environmental inputs and results from step 1 above, b) creates Candidate Project Areas (CPAs) using output of 2a, c) produces the supply curves in the form of csvs for input into the capacity expansion model, RESOLVE. 
+2. **createSupplyCurve** (requires arcpy): a) creates renewble resource areas using using vector environmental inputs and results from step 1 above, b) creates Candidate Project Areas (CPAs) using output of 2a, c) produces the supply curves in the form of csvs for input into the capacity expansion model, RESOLVE. 
 
 3. Run RESOLVE, a capacity expansion model. You can download it here for [2017](https://www.cpuc.ca.gov/irp/prelimresults2017/) and for [2019](https://www.cpuc.ca.gov/General.aspx?id=6442462824). If the links are broken, google "CPUC RESOLVE model package" 
 
-4. preprocessExistingWindData.py (requires arcpy): combines Ventyx and USWTDB wind location spatial data and produces a single existing wind farms dataset.
+4. **preprocessExistingWindData.py** (requires arcpy): combines Ventyx and USWTDB wind location spatial data and produces a single existing wind farms dataset.
 
-5. spatialDisagg_funct_coLoc.py (requires arcpy): Takes results of steps 2 and 3 to create Selected Project Areas for each RESOLVE portfolio/scenario (this was used to create Figure 4 in the paper). It assumes one could collocate solar and wind power plants within California. 
+5. **spatialDisagg_funct_coLoc.py** (requires arcpy): Takes results of steps 2 and 3 to create Selected Project Areas for each RESOLVE portfolio/scenario (this was used to create Figure 4 in the paper). It assumes one could collocate solar and wind power plants within California. 
 
-6. zonalStats_envImpact.ipynb (does not require arcpy): As part of the Strategic Environmental Assessment, this script calculates the average housing density, area of rangeslands impacted, area of each land cover type impacted for each scenario. 
+6. **zonalStats_envImpact.ipynb** (does not require arcpy): As part of the Strategic Environmental Assessment, this script calculates the average housing density, area of rangeslands impacted, area of each land cover type impacted for each scenario. 
 
-7. 
+7. **envImpactAssess_calcArea_envCat.py** (requires arcpy): 
 
-8. envImpactAssess_plotting.ipynb (does not require arcpy): Creates a large "master" csv that combines the outputs of all environmental impact assessment analyses (Steps 6 and 7 above). The csv output of this script was then used to create Fig. 5 in the paper. 
+8. **envImpactAssess_plotting.ipynb** (does not require arcpy): Creates a large "master" csv that combines the outputs of all environmental impact assessment analyses (Steps 6 and 7 above). The csv output of this script was then used to create Fig. 5 in the paper. 
