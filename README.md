@@ -10,6 +10,22 @@ This repository contains the Python scripts used to perform project site selecti
 - Download the wind and solar resource assessment spatial results here (Candidate Project Areas; results shown in Fig. 1 in the paper). 
 - The selected project areas (SPAs) are not publicly available for download (results shown in Fig. 4 in the paper). These areas associated with a given scenario identify optimal locations for possible new energy generation based on the criteria selected by the authors. This study is based on scenario analysis and is not a siting study capable of making prescriptions or predictions of where which areas will or should be developed. However, many of these lands are privately-owned so the data could easily be mis-interpreted by users or landowners as identifying lands which are targeted or sanctioned for renewable energy development by the organizations involved in the study. These data are not publicly available due to the risk of mis-interpretation and the legal and political risks associated with a possible change in market value associated with this identification. However, the code used to generate these selected project areas (i.e., the site selection methods and process) is available in this repository (step 5 below). 
 
+## Additional data and result tables
+- Additional data table S1 (EnvironmentalExclusionCategoryDataSources.xlsx): Data sources and links for each Environmental Exclusion Category (Step 1). Extended versions of Tables S9–S12.
+- Additional data table S2 (ResourceAssessment.xlsx): Unadjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE (used to make SI Fig. S4)
+- Additional data table S3 (ResourceAssessment.xlsx): Adjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE, supply curve inputs for RESOLVE modeling (used to make SI Fig. S3)
+- Additional data table S4 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Total resource cost of each portfolio
+- Additional data table S5 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Cost breakdown of each portfolio
+- Additional data table S6 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
+- Additional data table S7 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Generation (MWh) of selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
+- Additional data table S8 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Total (selected + existing and contracted) Capacity (MW) across all RESOLVE Zones by 2050 for all portfolios
+- Additional data table S9 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Selected capacity (MW) across all RESOLVE Zone by 2050 for all portfolios
+- Additional data table S10 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Generation (MWh) across all RESOLVE Zones by 2050 for all portfolios
+- Additional data table S11 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for generation aggregated across all RESOLVE Zones or regions
+- Additional data table S12 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for generation by RESOLVE Zone or region
+- Additional data table S13 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for transmission aggregated across all RESOLVE Zones or region
+- Additional data table S14 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for transmission by RESOLVE Zone or region
+
 ## Methodology and code:
 The following are the steps in the main steps in the analysis and the scripts and/or tools to implement them:
 
