@@ -15,7 +15,7 @@ The following data tables in Excel workbook format are part of Supporting Inform
 - Additional data table S1 ([**EnvironmentalExclusionCategoryDataSources.xlsx**](/AdditionalDataTables_forPaper/EnvironmentalExclusionCategoryDataSources.xlsx)): Data sources and links for each Environmental Exclusion Category (Step 1). Extended versions of Tables S9–S12.
 - Additional data table S2 ([**ResourceAssessment.xlsx**](/AdditionalDataTables_forPaper/)): Unadjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE (used to make SI Fig. S4)
 - Additional data table S3 ([**ResourceAssessment.xlsx**](/AdditionalDataTables_forPaper/ResourceAssessment.xlsx)): Adjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE, supply curve inputs for RESOLVE modeling (used to make SI Fig. S3)
-- Additional data table S4 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**]](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Total resource cost of each portfolio
+- Additional data table S4 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Total resource cost of each portfolio
 - Additional data table S5 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Cost breakdown of each portfolio
 - Additional data table S6 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
 - Additional data table S7 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Generation (MWh) of selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
@@ -36,7 +36,7 @@ The following are the steps in the main steps in the analysis and the scripts an
 
 3. Run RESOLVE, a capacity expansion model, using the newly created supply curve as inputs. You can download the model here for [2017](https://www.cpuc.ca.gov/irp/prelimresults2017/) and for [2019](https://www.cpuc.ca.gov/General.aspx?id=6442462824). If the links are broken, google "CPUC RESOLVE model package". You will need a solver in order to run it. Also, keep in mind that the publicly available version of the model is only for the California Indepdent System Operator footprint for California, i.e., it does not cover the entire state, but a large percentage of the state (>80%).
 
-4. **preprocessExistingWindData.py** (requires arcpy): combines Ventyx and USWTDB wind location spatial data and produces a single existing wind farms dataset. This dataset will be used to exclude suitable sites from being selected in the spatial disaggregation step.
+4. [**preprocessExistingWindData.py**](/preprocessExistingWindData.py) (requires arcpy): combines Ventyx and USWTDB wind location spatial data and produces a single existing wind farms dataset. This dataset will be used to exclude suitable sites from being selected in the spatial disaggregation step.
 
 5. **spatialDisagg_funct_coLoc.py** (requires arcpy): Takes results of steps 2 and 3 to create Selected Project Areas for each RESOLVE portfolio/scenario (this was used to create Figure 4 in the paper). It assumes one could collocate solar and wind power plants within California. 
 
