@@ -30,20 +30,20 @@ The following data tables in Excel workbook format are part of Supporting Inform
 ## Methodology and code:
 The following are the steps in the main steps in the analysis and the scripts and/or tools to implement them:
 
-1. Conduct site suitability analysis with only non-environmental inputs using Script Tool B, Stage 1 of the [MapRE GIS zoning tool](https://mapre.lbl.gov/gis-tools/) (Requires ArcGIS to run). This step uses raster-based geoprocessing.
+1. Conduct site suitability analysis with only non-environmental inputs using Script Tool B, Stage 1 of the [**MapRE GIS zoning tool**](https://mapre.lbl.gov/gis-tools/) (Requires ArcGIS to run). This step uses raster-based geoprocessing.
 
-2. **createSupplyCurve** (requires arcpy): a) creates renewble resource areas using using vector environmental inputs and results from step 1 above (using vector based processing to retain the native resolution of the environmental spatial datasets), b) creates Candidate Project Areas (CPAs) using output of 2a, c) produces the supply curves in the form of csvs for input into the capacity expansion model, RESOLVE. 
+2. [**createSupplyCurve.py**](/createSupplyCurve.py) (requires arcpy): a) creates renewble resource areas using using vector environmental inputs and results from step 1 above (using vector based processing to retain the native resolution of the environmental spatial datasets), b) creates Candidate Project Areas (CPAs) using output of 2a, c) produces the supply curves in the form of csvs for input into the capacity expansion model, RESOLVE. 
 
 3. Run RESOLVE, a capacity expansion model, using the newly created supply curve as inputs. You can download the model here for [2017](https://www.cpuc.ca.gov/irp/prelimresults2017/) and for [2019](https://www.cpuc.ca.gov/General.aspx?id=6442462824). If the links are broken, google "CPUC RESOLVE model package". You will need a solver in order to run it. Also, keep in mind that the publicly available version of the model is only for the California Indepdent System Operator footprint for California, i.e., it does not cover the entire state, but a large percentage of the state (>80%).
 
 4. [**preprocessExistingWindData.py**](/preprocessExistingWindData.py) (requires arcpy): combines Ventyx and USWTDB wind location spatial data and produces a single existing wind farms dataset. This dataset will be used to exclude suitable sites from being selected in the spatial disaggregation step.
 
-5. **spatialDisagg_funct_coLoc.py** (requires arcpy): Takes results of steps 2 and 3 to create Selected Project Areas for each RESOLVE portfolio/scenario (this was used to create Figure 4 in the paper). It assumes one could collocate solar and wind power plants within California. 
+5. [**spatialDisagg_funct_coLoc.py**](/spatialDisagg_funct_coLoc.py) (requires arcpy): Takes results of steps 2 and 3 to create Selected Project Areas for each RESOLVE portfolio/scenario (this was used to create Figure 4 in the paper). It assumes one could collocate solar and wind power plants within California. 
 
-6. **zonalStats_envImpact.ipynb**: As part of the Strategic Environmental Assessment, this script calculates the average housing density, area of rangeslands impacted, area of each land cover type impacted for each scenario. 
+6. [**zonalStats_envImpact.ipynb**](/zonalStats_envImpact.ipynb): As part of the Strategic Environmental Assessment, this script calculates the average housing density, area of rangeslands impacted, area of each land cover type impacted for each scenario. 
 
-7. **envImpactAssess_calcArea_envCat.py** (requires arcpy): This script calculates the area impacted for each environmental metric for each scenario. 
+7. [**envImpactAssess_calcArea_envCat.py**](envImpactAssess_calcArea_envCat.py) (requires arcpy): This script calculates the area impacted for each environmental metric for each scenario. 
 
-7. (alternative) **envImpactAssess_calcArea.ipynb**: This script also calculates the area impacted for each environmental metric for each scenario, but does not use arcpy functions. It does, however, take much longer to run for large, complex vectors compared to envImpactAssess_calcArea_envCat.py.
+7. (alternative) [**envImpactAssess_calcArea.ipynb**](/envImpactAssess_calcArea.ipynb): This script also calculates the area impacted for each environmental metric for each scenario, but does not use arcpy functions. It does, however, take much longer to run for large, complex vectors compared to envImpactAssess_calcArea_envCat.py.
 
-8. **envImpactAssess_plotting.ipynb**: Creates a large "master" csv that combines the outputs of all environmental impact assessment analyses (Steps 6 and 7 above). The csv output of this script was then used to create Fig. 5 in the paper. 
+8. [**envImpactAssess_plotting.ipynb**](/envImpactAssess_plotting.ipynb): Creates a large "master" csv that combines the outputs of all environmental impact assessment analyses (Steps 6 and 7 above). The csv output of this script was then used to create Fig. 5 in the paper. 
