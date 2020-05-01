@@ -3,20 +3,17 @@
 Created on Thu Jan 31 16:28:59 2019
 
 @author: Grace
+
+PURPOSE: Calculates the area of selected project areas that overlap with specific environmental metrics
+as part of the strategic envrionmental assessment
 """
 
 ##--------------------------------Preamble ----------------------------------
 import arcpy
 import numpy
-import numpy.lib.recfunctions
-import scipy.stats as stats
-import math
 import time
 import os
-import csv
-import re
 import pandas as pd
-import collections
 start_time = time.time()
 print(start_time)
 # Check out any necessary licenses
@@ -26,147 +23,14 @@ from arcpy.sa import *
 import arcpy.cartography as CA
 arcpy.env.overwriteOutput = True
 
-## Test data
-## cat2 wind:
-cat2_wind = r"C:\Users\Grace\Documents\TNC_beyond50\PathTo100\dataCollection\envData\envCat_merged.gdb\Cat2_wind"
-## selected wind sites
-sp = "C:\\Users\\Grace\\Documents\\TNC_beyond50\\PathTo100\\spatialDisaggregation\\selectedsites_cleaned_shp\\wind_0_03_nonEnv_r3_cat1b_singlepart_gt1km2_PA_OOS_RESOLVEZONE_net_Full_WECC_Cat1_Capped_Basecase_selected.shp"
-
-## copy to memory
-#cat2_wind_mem = arcpy.CopyFeatures_management(cat2_wind,'in_memory/cat2_wind')
-#sp_mem = arcpy.CopyFeatures_management(sp,'in_memory/sp')
-
-'''
-######################################################
-################ ERASE FUNCTION  ####################
-######################################################
-'''
-def calcArea_erase_arcpy(selectSites_gdf, envData_gdf, areaField, regionField, envDataField, envDataName, selectedSitesField, selectedSitesFilename):
-    
-    ## Erase merged env category data
-    sp_erased = arcpy.Erase_analysis(selectSites_gdf, envData_gdf, "in_memory/temp_erased")
-    elapsed_time = (time.time() - start_time)/(60)
-    print("Total time for completion: " + str(elapsed_time) + " minutes")
-    ## Calculate new Area field 
-    arcpy.AddField_management(sp_erased, "Area_remaining", "FLOAT")
-    arcpy.CalculateField_management(in_table = sp_erased, field = "Area_remaining", \
-                                    expression = "!Shape.Area@squarekilometers!", \
-                                    expression_type = "PYTHON_9.3")
-    
-    ## Calculate difference between the two area fields--this is the area of intersection
-    #arcpy.AddField_management(sp_erased, "Area_impacted", "FLOAT")
-    #arcpy.CalculateField_management(in_table = sp_erased, field = "Area_impacted", \
-    #                                expression = "!" + areaField + "!" +  "- !Area_remaining!", \
-    #                                expression_type = "PYTHON_9.3")
-    
-    #fieldList  = [field.name for field in arcpy.ListFields(sp_erased)]
-    #pattern = r'RESOLVE_ZONE_\S|cap_MW_\S|Area_\S|CF_avg_\S'
-    #fieldList = [x for x in fieldList if re.search(pattern, x)]  
-      
-    ## convert erased gdb table to numpy array to Pandas DF:
-    sp_erased_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(sp_erased, \
-                                                                      [regionField, areaField, 'Area_remaining']))
-    
-    area_erased_regionSum_df = sp_erased_df.groupby([regionField])['Area_remaining'].sum().reset_index()
-    
-    ##### use the original (unerased selectedSites_gdf) feature/shapefile, convert to pd df and calculate the area_allSelSites_km2
-    area_orig_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(selectSites_gdf,[regionField, areaField]))
-    ## Calculate the sum by region
-    area_orig_regionSum_df = area_orig_df.groupby([regionField])[areaField].sum().reset_index()
-    
-    ## merge the erased and original regionSum_df
-    area_merged_df = area_erased_regionSum_df.merge(area_orig_regionSum_df, how = "outer", on = regionField)
-    
-    ## subtract Area_remaining from Area (original)
-    area_merged_df["area_envData_km2"] = area_merged_df["Area"] - area_merged_df["Area_remaining"]
-    
-    ## rename fields as needed
-    area_merged_df.rename(columns = {areaField: 'area_allSelSites_km2', regionField: 'region'}, inplace=True)
-    ## assign new fields
-    area_merged_df[envDataField] = envDataName
-    area_merged_df[selectedSitesField] = selectedSitesFilename
-    ## remove "Area_remaining" column
-    area_merged_df.drop(["Area_remaining"], axis =1)
-    
-    area_merged_df["percent_selSites"] = area_merged_df["area_envData_km2"]/area_merged_df['area_allSelSites_km2']
-    
-    return area_merged_df
-
-
-start_time = time.time()
-print(start_time) # 10:17 pm
-
-outTable = calcArea_erase_arcpy(selectSites_gdf = sp_mem, envData_gdf = cat2_wind_mem, areaField = "Area", regionField = "RESOLVE_ZONE", \
-                                envDataField = "envData", envDataName = "Cat2", selectedSitesField = "selSites", \
-                                selectedSitesFilename = "wind_0_03_nonEnv_r3_cat1b_singlepart_gt1km2_PA_OOS_RESOLVEZONE_net_Full_WECC_Cat1_Capped_Basecase_selected")
-
-elapsed_time = (time.time() - start_time)/(60)
-print("Total time for completion: " + str(elapsed_time) + " minutes")
-
-
-'''
-######################################################
-############## INTERSECT FUNCTION ####################
-######################################################
-'''
-
-## Environmental data
-envDataGDB = "C:\\Users\\Grace\\Documents\\TNC_beyond50\\PathTo100\\dataCollection\\envImpactAssessment\\EnvImpactUnionSubgroups.gdb"
-envDataLayerList = [{"envDataLayerName": "Intactness_Union_sg11", "envDataGDB": envDataGDB, "envDataLabel": "intactness_SG11"}]
-for envData in envDataLayerList:
-    envData_gdf = arcpy.CopyFeatures_management(os.path.join(envData["envDataGDB"], envData["envDataLayerName"]), "in_memory/envData")
-
-resultsFileName = os.path.join("C:\\Users\\Grace\\Documents\\TNC_beyond50\\PathTo100\\envImpactAssessment\\", "areaImpacted_SG11_df.csv")
-
-selectSites_gdf = sp_mem
-
-def calcArea_intersect_arcpy(selectSites_gdf, envData_gdf, areaField, regionField, envDataField, envDataName, selectedSitesField, selectedSitesFilename):
-    
-    ## 1. Intersect
-    sp_intersect = arcpy.Intersect_analysis(in_features = [selectSites_gdf, envData_gdf], \
-                                         out_feature_class = "in_memory/temp_intersect")
-
-    ## recalculate area after intersection
-    arcpy.CalculateField_management(in_table = sp_intersect, field = areaField, \
-                                    expression = "!Shape.Area@squarekilometers!", \
-                                    expression_type = "PYTHON_9.3")
-    
-    ## convert gdb table to numpy array to Pandas DF:
-    sp_intersect_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(sp_intersect, \
-                                                                      [regionField, areaField]))
-
-    intersect_sumByZone = sp_intersect_df.groupby([regionField])[areaField].sum().reset_index()
-    
-    selectSites_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(selectSites_gdf, \
-                                                                      [regionField, areaField]))
-    allZones = selectSites_df[regionField].unique()
-
-    for zone in allZones:
-        if zone not in intersect_sumByZone[regionField].tolist():
-            intersect_sumByZone = pd.concat([intersect_sumByZone, pd.DataFrame(data = {regionField : [zone], areaField: [0]})], axis=0)
-            
-    ## 2. Create table of area sums of all selected sites
-    area_df = selectSites_df.groupby([regionField])[[areaField]].sum().reset_index()
-    
-    area_df.rename(columns = {areaField: 'area_allSelSites_km2'}, inplace=True)
-    
-    ## 3. merge the two df
-    intersect_sumByZone = intersect_sumByZone.merge(area_df, how = "inner", left_on=regionField, right_on=regionField)
-            
-    intersect_sumByZone[envDataField] = envDataName
-    intersect_sumByZone[selectedSitesField] = selectedSitesFilename
-    
-    intersect_sumByZone.rename(columns = {areaField: 'area_envData_km2', regionField: "region" }, inplace=True)
-    
-    intersect_sumByZone["percent_selSites"] = intersect_sumByZone["area_envData_km2"]/intersect_sumByZone['area_allSelSites_km2']
-    
-    return intersect_sumByZone
-
 '''
 ######################################################
 ################ SET INPUTS FOR RUNS #################
 ######################################################
 '''
+## change the infrastructure type with each run: 
+infrastructureType = "tx_longHaul" ## "tx" or "selSite" or "tx_longHaul"
+
 ## List scenarios
 scenList = ["In-State x Capped Basecase",  "Full WECC x Capped Basecase", "Part WECC x Capped Basecase", \
                         "In-State x Capped highDER", "Full WECC x Capped highDER", "Part WECC x Capped highDER", \
@@ -186,9 +50,6 @@ CA_superCREZ_fc = os.path.join(mainDir, "dataCollection\\siteSuitabilityInputs_n
 state_fc = os.path.join(mainDir, "dataCollection\\siteSuitabilityInputs_nonEnv.gdb", "stateBound_baja")
 QRA_fc = os.path.join(mainDir, "dataCollection\\siteSuitabilityInputs_nonEnv.gdb", "QRA_proj")
 
-
-infrastructureType = "tx_longHaul" ## tx or selSite or tx_longHaul
-
 ## column order of final csv
 master_df_col_list = ["tech", "envCat", "scenario", "selSites", "region", "envData","area_envData_km2", "area_allSelSites_km2", "percent_selSites"]
 
@@ -207,8 +68,6 @@ if infrastructureType == "tx":
     ## selected sites folder
     spDisaggFolder = os.path.join(mainDir,"spatialDisaggregation\\") #^^
     allFCfolder = os.path.join(spDisaggFolder, "LeastCostPath\\SD_LCP_122018\\SD_LCP_diss")    
-    #arcpy.env.workspace = allFCfolder
-    #allFCList = arcpy.ListFeatureClasses("*_erasedBuffLine")
     allFCList = [file for file in os.listdir(allFCfolder) if file.endswith(".shp")]
     suffix = "_copy_LCP_erasedBuffLine_diss.shp"
     suffix_solar = "_LCP_erasedBuffLine_diss.shp"
@@ -217,9 +76,6 @@ if infrastructureType == "tx":
 if infrastructureType == "tx_longHaul":
     ## selected sites folder
     #spDisaggFolder = os.path.join(mainDir,"spatialDisaggregation\\") #^^ C:\Users\Grace\Documents\TNC_beyond50\PathTo100\dataCollection\existingEnergyInfrastructure\BLMRecentlyApprovedProjects
-    allFCfolder = os.path.join(mainDir, "dataCollection\existingEnergyInfrastructure\BLMRecentlyApprovedProjects")    
-    #arcpy.env.workspace = allFCfolder
-    #allFCList = arcpy.ListFeatureClasses("*_erasedBuffLine")
     allFCList = [file for file in os.listdir(allFCfolder) if file.endswith(".shp")]
     suffix = "_copy_LCP_erasedBuffLine_diss.shp"
     suffix_solar = "_LCP_erasedBuffLine_diss.shp"
@@ -227,14 +83,10 @@ if infrastructureType == "tx_longHaul":
     scenList = ["placeholder"]
     
     
-## Environmental data
+## Environmental data GDB
 envDataGDB = "C:\\Users\\Grace\\Documents\\TNC_beyond50\\PathTo100\\dataCollection\\envImpactAssessment\\EnvImpactUnionSubgroups.gdb"
-#envDataLayerList = [{"envDataLayerName": "tribalLands_unioned_sg15", "envDataGDB": envDataGDB, "envDataLabel": "tribal_SG15", \
-#        "resultsFileName" : "areaImpacted_" + infrastructureType + "_SG15_df.csv", "catSubList" : ["Cat1"],\
-#        "techList": ["Geothermal", "Wind", "Solar"]}]
-#functionType = "intersect" ## "erase" or "intersect"
 
-## ALL env datasets:
+## Create list of inputs and outputs to use for each env metric:
 envDataLayerList = [{"envDataLayerName": "criticalHabitat_Union_sg5", "envDataGDB": envDataGDB, "envDataLabel": "criticalHabitat_SG05",\
       "resultsFileName" : "areaImpacted_" + infrastructureType + "_SG05_df.csv", "catSubList" : ["Cat1", "Cat2"],\
       "techList": ["Geothermal", "Wind", "Solar"],\
@@ -312,10 +164,116 @@ envDataLayerList = [{"envDataLayerName": "criticalHabitat_Union_sg5", "envDataGD
         "techList": ["Geothermal", "Wind", "Solar"],\
         "functionType": "intersect"}]
 
-### '''
+'''
+#####################################################
+####### FUNCTIONS FOR PERFORMING ANALYSIS  ##########
+#####################################################
+
+PURPOSE: Calculate the area of overlap between the selected project areas (SPAs)
+and the environmental metric using one of two different approaches
+
+A) Erase: erases the environmental metric feature class from the selected project areas
+then calculates the difference between the original SPA extent and the result of the 
+erase function to get the area of overlap. This method is faster for complex polygons
+
+B) Intersect: creates a feature class that is the intersection of the SPA and the
+envrionmental metric feature class, and thus directly calculates the overlapping area. 
+This method is slower for complex polygons. 
+'''
+
+##################################################
+## ------------ ERASE FUNCTION -----------------##
+##################################################
+def calcArea_erase_arcpy(selectSites_gdf, envData_gdf, areaField, regionField, envDataField, envDataName, selectedSitesField, selectedSitesFilename):
+    
+    ## Erase merged env category data
+    sp_erased = arcpy.Erase_analysis(selectSites_gdf, envData_gdf, "in_memory/temp_erased")
+    elapsed_time = (time.time() - start_time)/(60)
+    print("Total time for completion: " + str(elapsed_time) + " minutes")
+    ## Calculate new Area field 
+    arcpy.AddField_management(sp_erased, "Area_remaining", "FLOAT")
+    arcpy.CalculateField_management(in_table = sp_erased, field = "Area_remaining", \
+                                    expression = "!Shape.Area@squarekilometers!", \
+                                    expression_type = "PYTHON_9.3")
+    
+    ## convert erased gdb table to numpy array to Pandas DF:
+    sp_erased_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(sp_erased, \
+                                                                      [regionField, areaField, 'Area_remaining']))
+    
+    area_erased_regionSum_df = sp_erased_df.groupby([regionField])['Area_remaining'].sum().reset_index()
+    
+    ##### use the original (unerased selectedSites_gdf) feature/shapefile, convert to pd df and calculate the area_allSelSites_km2
+    area_orig_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(selectSites_gdf,[regionField, areaField]))
+    ## Calculate the sum by region
+    area_orig_regionSum_df = area_orig_df.groupby([regionField])[areaField].sum().reset_index()
+    
+    ## merge the erased and original regionSum_df
+    area_merged_df = area_erased_regionSum_df.merge(area_orig_regionSum_df, how = "outer", on = regionField)
+    
+    ## subtract Area_remaining from Area (original)
+    area_merged_df["area_envData_km2"] = area_merged_df["Area"] - area_merged_df["Area_remaining"]
+    
+    ## rename fields as needed
+    area_merged_df.rename(columns = {areaField: 'area_allSelSites_km2', regionField: 'region'}, inplace=True)
+    ## assign new fields
+    area_merged_df[envDataField] = envDataName
+    area_merged_df[selectedSitesField] = selectedSitesFilename
+    ## remove "Area_remaining" column
+    area_merged_df.drop(["Area_remaining"], axis =1)
+    
+    area_merged_df["percent_selSites"] = area_merged_df["area_envData_km2"]/area_merged_df['area_allSelSites_km2']
+    
+    return area_merged_df
+
+######################################################
+## ------------ INTERSECT FUNCTION -----------------##
+######################################################
+
+def calcArea_intersect_arcpy(selectSites_gdf, envData_gdf, areaField, regionField, envDataField, envDataName, selectedSitesField, selectedSitesFilename):
+    
+    ## 1. Intersect
+    sp_intersect = arcpy.Intersect_analysis(in_features = [selectSites_gdf, envData_gdf], \
+                                         out_feature_class = "in_memory/temp_intersect")
+
+    ## recalculate area after intersection
+    arcpy.CalculateField_management(in_table = sp_intersect, field = areaField, \
+                                    expression = "!Shape.Area@squarekilometers!", \
+                                    expression_type = "PYTHON_9.3")
+    
+    ## convert gdb table to numpy array to Pandas DF:
+    sp_intersect_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(sp_intersect, \
+                                                                      [regionField, areaField]))
+
+    intersect_sumByZone = sp_intersect_df.groupby([regionField])[areaField].sum().reset_index()
+    
+    selectSites_df = pd.DataFrame(arcpy.da.FeatureClassToNumPyArray(selectSites_gdf, \
+                                                                      [regionField, areaField]))
+    allZones = selectSites_df[regionField].unique()
+
+    for zone in allZones:
+        if zone not in intersect_sumByZone[regionField].tolist():
+            intersect_sumByZone = pd.concat([intersect_sumByZone, pd.DataFrame(data = {regionField : [zone], areaField: [0]})], axis=0)
+            
+    ## 2. Create table of area sums of all selected sites
+    area_df = selectSites_df.groupby([regionField])[[areaField]].sum().reset_index()
+    
+    area_df.rename(columns = {areaField: 'area_allSelSites_km2'}, inplace=True)
+    
+    ## 3. merge the two df
+    intersect_sumByZone = intersect_sumByZone.merge(area_df, how = "inner", left_on=regionField, right_on=regionField)
+            
+    intersect_sumByZone[envDataField] = envDataName
+    intersect_sumByZone[selectedSitesField] = selectedSitesFilename
+    
+    intersect_sumByZone.rename(columns = {areaField: 'area_envData_km2', regionField: "region" }, inplace=True)
+    
+    intersect_sumByZone["percent_selSites"] = intersect_sumByZone["area_envData_km2"]/intersect_sumByZone['area_allSelSites_km2']
+    
+    return intersect_sumByZone
+
 '''
 ######################################################
-################## LOOP FUNCTIONS ####################
+############# APPLY FUNCTIONS IN LOOP ################
 ######################################################
 '''
 start_time = time.time()
@@ -488,4 +446,3 @@ for envData in envDataLayerList:
                             
 elapsed_time = (time.time() - start_time)/(60)
 print("^^^^ Total time for completion: " + str(elapsed_time) + " minutes")
-
