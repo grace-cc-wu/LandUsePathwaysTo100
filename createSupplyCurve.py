@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-Created on %(date)s
+Created on 12/1/2018
 
 @author: Grace Wu
 
-This script creates Supply Curves for RESOLVE for Wind, PV, and Geothermal
+PURPOSE: This script creates Supply Curves for RESOLVE for Wind, PV, and Geothermal
+
+Previous filename: RESOLVEsupplyCurve_py3_112918.py
 """
 
 ##--------------------------------Preamble ----------------------------------
@@ -27,17 +29,15 @@ from arcpy import env
 from arcpy.sa import *
 import arcpy.cartography as CA
 arcpy.env.overwriteOutput = True
-'''
 
+'''
 ################################################################################
 ##---------------------Local Parameters and workspace------------------------###
 ################################################################################
 '''
-##---------------------Local Parameters and workspace------------------------
-
 ## assumptions:
-tech = "solar"
-minArea = 1 # km2
+tech = "solar" ## Select: "solar", "wind", "geothermal"
+minArea = 1 # km2; all polygons below this threshold will not be inlcuded in the result
 
 ### Set workspace for saving outputs: create file geodatabase (fgdb) for run session outputs
 mainInputFolder = "C:\\Users\\Grace\\Documents\\TNC_beyond50\\PathTo100\\dataCollection\\" #^^
@@ -63,15 +63,15 @@ arcpy.env.cellSize = templateRaster
 ## INPUT FILES ##
 #################
 
-## resource rasters
+## renewable resource rasters
 solarCF = os.path.join(mainInputFolder, "siteSuitabilityInputs_nonEnv.gdb\\CF_FixedPV_SAM_AC_CF_250m")
 windCF = os.path.join(mainInputFolder, "siteSuitabilityInputs_nonEnv.gdb\\CF_WINDtoolkit_NREL_IDW_masked_NoDataVals_250m")
 
-## Existing wind and solar power plants:
+## Existing wind and solar power plants
 existingWind = os.path.join(mainInputFolder, "existingEnergyInfrastructure\\energyInfrastructure.gdb\\Ventyx_USGS_merged_repowering")
 existingSolar = os.path.join(mainInputFolder, "existingEnergyInfrastructure\\energyInfrastructure.gdb\\NationalSolarArrays_solarOnly")
 
-## QRAs and SuperCREZs
+## QRAs and SuperCREZs (study boundaries)
 QRAfilePath = os.path.join(mainInputFolder, "siteSuitabilityInputs_nonEnv.gdb\\QRA_proj")
 SuperCREZ = os.path.join(mainInputFolder, "siteSuitabilityInputs_nonEnv.gdb\\SUPERCREZ_proj")
 statesFilePath = os.path.join(mainInputFolder, "siteSuitabilityInputs_nonEnv.gdb\\stateBound_baja")
@@ -82,9 +82,13 @@ scratch = os.path.join(mainOutputFolder, "scratch.gdb")
 ######################################################################################
 ##-------SITE SUITABILITY USING ALL ENV DATA : ERASE + EXTRACT BY MASK-------------###
 ######################################################################################
+
+PURPOSE: Creates site suitability maps results from MapRE Script Tool B Stage 1 using 
+only technical exclusions and erases environmental exclusion areas 
 '''
 
-#### ORIGINAL ENV SCREENS
+#### SET PATHS TO ORIGINAL ENV EXCLUSION CATEGORIES FOR EACH TECHNOLOGY
+## Note: each Category is comrpised of one or more features
 
 ## SOLAR
 if tech == "solar":
@@ -99,7 +103,7 @@ if tech == "solar":
     Cat3 = collections.OrderedDict([(os.path.join(mainInputFolder, "envData\\Cat3\\Cat3_solar_excl_base_proj.shp"), ["_cat2f", "_cat3c"])])
     Cat4 = collections.OrderedDict([(os.path.join(mainInputFolder, "envData\\Cat4\\Cat4_u_d_s_proj.shp"), ["_cat3", "_cat4"])])
     CFraster = solarCF
-    #inputNAME = os.path.join(mainOutputFolder, "070618_RPScalcCAresource.gdb\\RPScalc_SolarPV")
+    ## Path to non-environmental site suitability results (created using MapRE Script Tool B Stage 1)
     inputNAME = os.path.join(mainOutputFolder, gdbFileName, "solarPV_0_0_nonEnv_r1")
 
 ## WIND
@@ -117,14 +121,13 @@ if tech == "wind":
                                     (os.path.join(mainInputFolder, "envData\\Cat3\\Cat3_wind_excl_p2_no0147_proj.shp"), ["_cat3b", "_cat3c"])])
     Cat4 = collections.OrderedDict([(os.path.join(mainInputFolder, "envData\\Cat4\\Cat4_u_d_s_proj.shp"), ["_cat3c", "_cat4"])])
     CFraster = windCF
-    #inputNAME = os.path.join(mainOutputFolder, "070618_RPScalcCAresource.gdb\\RPScalc_Wind")
+    ## Path to non-environmental site suitability results (created using MapRE Script Tool B Stage 1)
     inputNAME = os.path.join(mainOutputFolder, gdbFileName, "wind_0_03_nonEnv_r3")
 
 selectSuffix = "_gt1km2"
 envEx_ls = [Cat1, Cat2, Cat3, Cat4]
 
-
-## For each category, erase the env data using the previously saved feature class
+## For each env exclusion category, erase the env category using the previously saved feature class
 for cat in envEx_ls:
     for ex in cat:
         ft = inputNAME + cat[ex][0]
@@ -169,11 +172,13 @@ for cat in envEx_ls:
     
     print("Done: select min area " + ft_singlept_file + selectSuffix)  
 
-''' ===========================================================================================================
+'''
+#############################################################################################
+##----------RUN SCRIPT TOOL B STAGE 2: CREATE CANDIDATE PROJECT AREAS----------------------##
+#############################################################################################
 
-#############################################################################################
-##----------RUN SCRIPT TOOL B STAGE 2: CREATE PROJECT OPPORTUNITY AREAS-------------------###
-#############################################################################################
+PURPOSE: Takes output of above site suitability maps and creates Candidate Project Area (CPAs)
+By breaking up the polygons into project-sized polygons. 
 '''
 # Import custom toolbox
 #arcpy.ImportToolbox("F:\\MapRE_misc\\REzoningGIStools_allVersions\\REzoningGIStools_v1_4\\REzoning_models.tbx", "scriptToolBStage2CreateProjectAreas")
@@ -181,19 +186,14 @@ for cat in envEx_ls:
 # Run tool in the custom toolbox.  The tool is identified by
 #  the tool name and the toolbox alias for example: arcpy.scriptToolBStage2CreateProjectAreas_REzoningModelss(arguments)
 
-## the above gives a syntax error. dunno why so just copying and pasting the script tool manually here and converting to function
-
+## the above gives a syntax error. dunno why so just copying and pasting the script tool manually here and converting to function (website: mapre.lbl.gov/gis-tools)
 
 def scriptToolB2 (suitableSites,projectsOut,scratch,templateRaster,countryBounds,geoUnits,fishnetSize,fishnetDirectory,whereClauseMax, whereClauseMin, whereClauseMinContArea):
-    '''
-    #####################################################################################
-    #### --------------------------------GEOPROCESSES--------------------------------####
-    #####################################################################################
     
     ############################################
     ## Set environments and scratch workspace ##
     ############################################
-    '''   
+    
     # set environments for any raster analyses
     arcpy.env.snapRaster = Raster(templateRaster)
     arcpy.env.extent = countryBounds
@@ -203,11 +203,10 @@ def scriptToolB2 (suitableSites,projectsOut,scratch,templateRaster,countryBounds
     env.workspace = scratch
     env.scratchWorkspace = scratch
     
-    '''
     #################################################
     ## Check for fishnet file and create if needed ##
     #################################################
-    '''   
+
     
     fishnet = "in_memory/fishnet_" + str(fishnetSize) + "km" ## MUST add .shp if not putting file in gdb (for add field function)
     clippedFishnet = fishnetDirectory + "\\"+ "fishnet_" + str(fishnetSize) + "km"
@@ -261,11 +260,10 @@ def scriptToolB2 (suitableSites,projectsOut,scratch,templateRaster,countryBounds
     #IntermediateSelectedForAggregation2 = "in_memory/IntermediateSelectedForAggregation2_2"
     #IntermediateIntersect_geoUnits_2 = "in_memory/IntermediateIntersect_geoUnits_2"
     
-    '''
     ###############
     ## Intersect ##
     ###############
-    ''' 
+ 
     ## COPY SUITABLE SITES FEATURE CLASS TO MEMORY
     sites = arcpy.CopyFeatures_management(suitableSites, "in_memory/suitableSites")
     
@@ -292,37 +290,20 @@ def scriptToolB2 (suitableSites,projectsOut,scratch,templateRaster,countryBounds
     print("finished intersecting by fishnet")
     # Process: Calculate Area
     arcpy.CalculateField_management(IntermediateIntersect, "Area", "!Shape.Area@squarekilometers!", "PYTHON_9.3", "")
-    
-    '''
-    ###############
-    ## Aggregate ##
-    ###############
-    
-    print("Starting aggregation")
-    # select areas under min to aggregate
-    arcpy.Select_analysis(IntermediateIntersect, IntermediateSelectedForAggregation1, whereClauseMin)
-    # Process: erase small areas from larger areas
-    arcpy.Erase_analysis(IntermediateIntersect, IntermediateSelectedForAggregation1, IntermediateIntersectErased)
-    # merge those under min area to aggregate
-    arcpy.Merge_management([IntermediateSelectedForAggregation1, IntermediateErased],IntermediateSelectedForAggregation2)
-    # aggregate smaller abutting areas into one polygon
-    CA.AggregatePolygons(IntermediateSelectedForAggregation2, IntermediateAggregatedFeatures, 1, "", 0, "ORTHOGONAL", "", "aggregatedTable")
-    print("Finished Aggregation")
-    ''' 
-    '''
+
     ################################
     ## Create singlepart polygons ##
     ################################
-    '''
+
     ## Multi-part to single part
     arcpy.MultipartToSinglepart_management(in_features = IntermediateIntersect, out_feature_class = IntermediateIntersect_singlept)
     ## Recalculate area
     arcpy.CalculateField_management(IntermediateIntersect_singlept, "Area", "!Shape.Area@squarekilometers!", "PYTHON_9.3", "")
-    '''
+
     ###############################
     ## Eliminate slivers - twice ##
     ###############################
-    ''' 
+
     print("Starting elimination")
     # Execute MakeFeatureLayer
     tempLayer = arcpy.MakeFeatureLayer_management(IntermediateIntersect_singlept, "tempLayer")
@@ -343,12 +324,11 @@ def scriptToolB2 (suitableSites,projectsOut,scratch,templateRaster,countryBounds
 
     # Execute Eliminate
     arcpy.Eliminate_management(IntermediateEliminated_tempLayer, IntermediateEliminated2, "LENGTH")
-    
-    '''
+
     ################################################
     ## Merge aggregated with intersected features ##
     ################################################
-    ''' 
+
     # Merge aggregated polygons with larger, split polygons
     merged = arcpy.Merge_management([IntermediateErased, IntermediateEliminated2], "in_memory/intermediateProjects")
     
@@ -368,8 +348,11 @@ def scriptToolB2 (suitableSites,projectsOut,scratch,templateRaster,countryBounds
     ## arcpy.Statistics_analysis(selectOut, outputFGDB + filename + '_stats', "Area SUM", "") ## CREATE PROJECT STATS
     print('Finished merging')
 
+#############################################################
+## APPLY scriptToolB2 FUNCTION TO SITE SUITABILITY OUTPUTS ##
+#############################################################
 
-## List of inputs to loop over
+## Create list of category inputs to loop over
 ## SOLAR:
 if tech == "solar":
     ft_ls = {"Cat1" : "solarPV_0_0_nonEnv_r1_cat1b_singlepart_gt1km2",\
@@ -398,7 +381,7 @@ if tech == "wind":
     maxAreaAgg = "9"
     minAreaAgg = "1"
 
-## loop through each category and zone type to create PPA feature classes
+## APPLY FUNCTION: loop through each category and zone type to create CPA feature classes
 for cat in ft_ls:
     print("")
     print("")
@@ -430,13 +413,14 @@ for cat in ft_ls:
                      whereClauseMinContArea = '"Area" > ' + str("1"))
         print("  Finished")
 
-
-''' ===========================================================================================================
-
+'''
 #####################################################################################################################################
 ##----------CALCULATE OOS AVG CF AND TOTAL MW BY RESOLVE ZONE (eg., Wyoming_Wind) AND QRA (e.g., WY_SO, WY_NO) -------------------###
 #####################################################################################################################################
+
+PURPOSE: Takes CPAs (previous output) and creates a CSV supply curve within RESOLVE ZONEs and QRAs (Constrained)
 '''
+## Function to calculate supply curve 
 def calcSupplyCurve(inFeature, inRaster, inFeatureFileName, category, QRAs, RESOLVE_ZONE_FIELD):
     
     ## Delete Name RESOLVE_ZONE_FIELD if it already exists:
@@ -551,22 +535,15 @@ def calcSupplyCurve(inFeature, inRaster, inFeatureFileName, category, QRAs, RESO
                                in_field = RESOLVE_ZONE_FIELD, join_table = areaRZ_table, \
                                join_field = RESOLVE_ZONE_FIELD, fields = ["Area_" + category, "cap_MW_RESOLVE_ZONE_" + category])#fields = ["CF_avg_RESOLVE_ZONE_" + category])
     
-    ############################################
-    ## copy tables to hard drive as gdb table ##
-    ############################################
+    ########################################
+    ## CONVERT ARCPY TABLES TO PANDAS DFs ##
+    ########################################
     
     ##### RESOLVE ZONE AVERAGES
-    #arcpy.TableToTable_conversion(in_rows = avgCF_byQRA_RZ, out_path = os.path.join(mainOutputFolder, gdbFileName),\
-    #                              out_name =  inFeatureFileName + "_areaRZ_table_debug")
-    ## convert table to pandas df
-    # get fields for use in Table to Numpy Array function
-    #fields = arcpy.ListFields(os.path.join(mainOutputFolder, outputGDB, inFeatureFileName + "_RESOLVE_ZONE_CFMW"))
     fields = arcpy.ListFields(avgCF_byQRA_RZ)
     fieldList  = []
     for field in fields:
         fieldList.append(field.name)
-    #fieldList.remove('FREQUENCY') ## remove extra field
-    #fieldList.remove("OBJECTID")
     
     pattern = r'RESOLVE_ZONE_\S|cap_MW_\S|Area_\S|CF_avg_\S'
     fieldList = [x for x in fieldList if re.search(pattern, x)]  
@@ -574,21 +551,12 @@ def calcSupplyCurve(inFeature, inRaster, inFeatureFileName, category, QRAs, RESO
     ## convert gdb table to numpy array to Pandas DF (and transpose):
     stateAvgCFMW_df = pandas.DataFrame(arcpy.da.TableToNumPyArray(avgCF_byQRA_RZ, fieldList))
     
-    
     ##### QRA AVERAGES
-    #arcpy.TableToTable_conversion(in_rows = areaQRAtable, out_path = os.path.join(mainOutputFolder, outputGDB), \
-    #                              out_name =  inFeatureFileName + "_QRAavgCFMW_RESOLVE_ZONES_ONLY")
-    
-    ## convert table to pandas df
-    # get fields for use in Table to Numpy Array function
-    #fields = arcpy.ListFields(os.path.join(mainOutputFolder, outputGDB, inFeatureFileName + "_QRAavgCFMW_RESOLVE_ZONES_ONLY"))
     fields = arcpy.ListFields(areaQRAtable)
     fieldList  = []
     for field in fields:
         fieldList.append(field.name)
     fieldList.remove("cap_MW_RESOLVE_ZONE_" + category) ## remove extra field
-    #fieldList.remove("FREQUENCY")
-    #fieldList.remove("OBJECTID")
     
     pattern = r'RESOLVE_ZONE_\S|cap_MW_\S|Area_\S|CF_avg_\S|Name'
     fieldList = [x for x in fieldList if re.search(pattern, x)]
@@ -596,14 +564,15 @@ def calcSupplyCurve(inFeature, inRaster, inFeatureFileName, category, QRAs, RESO
     ## convert gdb table to numpy array to Pandas DF (and transpose):
     QRAavgCFMW_df = pandas.DataFrame(arcpy.da.TableToNumPyArray(areaQRAtable, fieldList))
     
-    print("Finished processing " + inFeatureFileName)   
     
+    print("Finished processing " + inFeatureFileName)   
     return stateAvgCFMW_df, QRAavgCFMW_df
 
+###################################################
+## APPLY calcSupplyCurve FUNCTION TO CPA OUTPUTS ##
+###################################################
 
-
-## List of inputs to loop over
-
+## Create list of inputs to loop over
 ## SOLAR:
 if tech == "solar":
     ft_ls = {"Cat1" : ["solarPV_0_0_nonEnv_r1_cat1b_singlepart_gt1km2_PA_OOS_RESOLVEZONE", "solarPV_0_0_nonEnv_r1_cat1b_singlepart_gt1km2"],\
@@ -622,7 +591,7 @@ if tech == "wind":
     LUF = 6.1 # MW/km
     RESOLVE_ZONE_FIELD_param = "RESOLVE_ZONE_wind"
 
-## output list to append 
+## Create ouutput list to append to
 stateAvgCFMW_ls = []
 QRAavgCFMW_ls = []
 
@@ -657,16 +626,16 @@ stateAvgCFMW_merged.to_csv(os.path.join(mainOutputFolder, supplyCurveFolder, tec
 # This one will will not be used (just informational)
 QRAavgCFMW_merged.to_csv(os.path.join(mainOutputFolder, supplyCurveFolder, tech + "_OOS_QRA_avgCFMW_PA.csv"))
 
-
-''' ===========================================================================================================
-
+'''
 ############################################################################################
 ## Create supply curves for state-wide (outside of QRAs) or CA RESOLVE ZONE MW and Avg CF ##
 ############################################################################################
+
+PURPOSE: Takes CPAs (previous output) and creates a CSV supply curve within state boundaries (Unconstrained)
+Uses same method as calcSupplyCurve for getting average CF and total MW per SuperCREZ 
 '''
 
-    ## Same method for getting average CF and total MW per SuperCREZ 
-
+## Create function
 def calcSupplyCurve_state(inFeature, inRaster, inFeatureFileName, category, zonesFile, zoneField):
     
     ## Delete Name RESOLVE_ZONE_FIELD if it already exists:
@@ -720,11 +689,6 @@ def calcSupplyCurve_state(inFeature, inRaster, inFeatureFileName, category, zone
                                                    out_table = "in_memory/zonalStats_CF", \
                                                    ignore_nodata = "DATA", statistics_type = "MEAN")
     
-    # Join zonal statistics table of avg CF to QRA file to get the name of the state in the stats table
-    #arcpy.JoinField_management(in_data = CFtable, in_field = "Name", join_table = QRAs, \
-    #                           join_field = "Name", fields = ["STATE"])
-    
-    # Rename field MEAN to CF_avg
     arcpy.AlterField_management(in_table = CFtable, field = "MEAN", new_field_name = "CF_avg_" + category)
     
     #####################################
@@ -734,25 +698,14 @@ def calcSupplyCurve_state(inFeature, inRaster, inFeatureFileName, category, zone
                                join_field = zoneField, fields = ["Area_" + category, "cap_MW_" + category])
     
     
-    ############################################
-    ## copy tables to hard drive as gdb table ##
-    ############################################
+    ########################################
+    ## CONVERT ARCPY TABLES TO PANDAS DFs ##
+    ########################################
     
-    ## SAVE STATE AVERAGES to GDB table
-    #arcpy.TableToTable_conversion(in_rows = CFtable, out_path = os.path.join(mainOutputFolder, outputGDB),\
-    #                              out_name =  inFeatureFileName + csv_suffix)
-    
-    ## convert table to pandas df
-    # get fields for use in Table to Numpy Array function
-    #fields = arcpy.ListFields(os.path.join(mainOutputFolder, outputGDB, inFeatureFileName + csv_suffix))
     fields = arcpy.ListFields(CFtable)
     fieldList  = []
     for field in fields:
         fieldList.append(field.name)
-    #fieldList.remove('COUNT') ## remove extra field
-    #fieldList.remove("OBJECTID")
-    #fieldList.remove("ZONE_CODE")
-    #fieldList.remove("AREA")
     
     pattern = r'CF_avg_\S|Area_\S|cap_MW_\S|NAME|RESOLVE_ZONE|STPOSTAL'
     fieldList = [x for x in fieldList if re.search(pattern, x)]
@@ -764,7 +717,10 @@ def calcSupplyCurve_state(inFeature, inRaster, inFeatureFileName, category, zone
     
     return df
 
-
+#########################################################
+## APPLY calcSupplyCurve_state FUNCTION TO CPA OUTPUTS ##
+#########################################################
+    
 ## List of inputs to loop over
 if tech == "solar":
     ft_ls = {"Cat1" : "solarPV_0_0_nonEnv_r1_cat1b_singlepart_gt1km2",\
@@ -785,6 +741,7 @@ if tech == "wind":
 zoneType_ls = {"_PA_state": [statesFilePath, statesFileFieldName, "_OOS_state_avgCFMW_PA.csv"], \
                  "_PA_CA_RESOLVEZONE": [SuperCREZ, "RESOLVE_ZONE","_CA_RESOLVEZONE_avgCFMW_PA.csv"]}
 
+## APPLY FUNCTION IN LOOP
 ## for each zone type (california RESOLVE Zones or OOS wall-to-wall/state)
 for zone in zoneType_ls:
     ## output list to append 
@@ -815,10 +772,10 @@ for zone in zoneType_ls:
     ## SAVE TO CSV
     stateAvgCFMW_w2w_merged.to_csv(path_or_buf = os.path.join(mainOutputFolder, supplyCurveFolder, tech + csvSuffix), index = False)
 
-''' ===========================================================================================================
-##############################
-## COMPARE WITH ORB RESULTS ##
-##############################
+'''
+########################################
+## OPTIONAL: COMPARE WITH ORB RESULTS ##
+########################################
 '''
 
 ## append column with RESOLVE_ZONE
@@ -845,15 +802,19 @@ stateAvgCFMW_w2w_merged_PV = pandas.merge(stateAvgCFMW_w2w_merged2, df_PV, how= 
 ## SAVE TO CSV
 stateAvgCFMW_w2w_merged_PV.to_csv(path_or_buf = os.path.join(mainOutputFolder, tech + "__CAavgCFMW_w2w_superCREZ_allCat_withORB.csv"), index = False)
 
-
-
-
-''' ===========================================================================================================
+''' 
 ###########################################################
-## Get state-wide MW for GEOTHERMAL within RESOLVE ZONES ##
+## GET STATE-WIDE MW FOR GEOTHERMAL WITHIN RESOLVE ZONES ##
 ###########################################################
+
+PURPOSE: Geothermal rsources are point locations, not polygons, which requires a different set of analyses 
+Does everything above for wind and solar, but for geothermal
 '''
-## Geothermal
+##################################################
+## CREATE SITE SUITABILITY AREAS FOR GEOTHERMAL ##
+##################################################
+
+## Geothermal environmental exclusion categories
 Cat1 = collections.OrderedDict([(os.path.join(mainInputFolder, "envData\\Cat1_solar\\Cat1_u_d_s.shp"), ["", "_cat1a"]),\
                                 (os.path.join(mainInputFolder, "envData\\tnc_lands_cat1_2\\tnc_lands_cat1_easements_proj.shp"), ["_cat1a", "_cat1b"])])
 Cat2 = collections.OrderedDict([(os.path.join(mainInputFolder, "envData\\Cat2\\both_p1\\Both_p1.shp"), ["_cat1b", "_cat2aa"]),\
@@ -881,9 +842,9 @@ for cat in envEx_ls:
         print("Erasing " + str(ex))
         arcpy.Erase_analysis(ft, ex, outputFile)
 
-    ## Get outputfilename of last element of ordered dictionary
-    #lastOutput = inputNAME + cat[next(reversed(cat))][1]
-
+########################################
+## CREATE SUPPLY CURVE FOR GEOTHERMAL ##
+########################################
 
 def calcSupplyCurve_geothermal(inFeature, inFeatureFileName, category, zonesFile, zonesToSelect, zonesType, zoneField):
         
@@ -896,15 +857,8 @@ def calcSupplyCurve_geothermal(inFeature, inFeatureFileName, category, zonesFile
                                                out_feature_class = inFeature + "_" + zonesType + "Joined", \
                                                join_operation = "JOIN_ONE_TO_ONE", join_type = "KEEP_ALL", match_option = "INTERSECT")
     
-    
     print("Finished spatial join for " + inFeatureFileName)
     
-    ## select zones to aggregate
-    #inFeature_joined_select = arcpy.Select_analysis(in_features = inFeature_joined, \
-    #                      out_feature_class = inFeature + "_resolveSelect", \
-    #                      where_clause = zonesToSelect)
-    
-    ## summary statistics to get the total area per QRA; the resultant field in the table is "SUM_Area"
     MWtable = arcpy.Statistics_analysis(in_table = inFeature_joined, \
                                        out_table = "in_memory/inFeature_MWCalc", \
                                        statistics_fields = [["MW", "SUM"]], case_field = [zoneField])
@@ -913,16 +867,10 @@ def calcSupplyCurve_geothermal(inFeature, inFeatureFileName, category, zonesFile
     arcpy.AlterField_management(in_table = MWtable, field = "SUM_MW", new_field_name = "cap_MW_" + category, \
                                 new_field_alias = "cap_MW_" + category)
     
-    ############################################
-    ## copy tables to hard drive as gdb table ##
-    ############################################
-    
-    ## SAVE STATE AVERAGES to GDB table
-    #arcpy.TableToTable_conversion(in_rows = MWtable, out_path = os.path.join(mainOutputFolder, outputGDB),\
-    #                              out_name =  inFeatureFileName + csv_suffix)
-    ## convert table to pandas df
-    # get fields for use in Table to Numpy Array function
-    #fields = arcpy.ListFields(os.path.join(mainOutputFolder, outputGDB, inFeatureFileName + csv_suffix))
+    ########################################
+    ## CONVERT ARCPY TABLES TO PANDAS DFs ##
+    ########################################
+
     fields = arcpy.ListFields(MWtable)
     fieldList  = []
     for field in fields:
@@ -942,9 +890,9 @@ def calcSupplyCurve_geothermal(inFeature, inFeatureFileName, category, zonesFile
     
     return df
 
-###################
-## APPLY TO QRAs ##
-###################
+##############################################
+## APPLY calcSupplyCurve_geothermal TO QRAs ##
+##############################################
     
 ## List of inputs to loop over
 ft_ls = {"Cat1" : "geothermal_cat1b",\
@@ -981,9 +929,9 @@ for tab in [resolveZone_MW_ls[2], resolveZone_MW_ls[3]]:
 ## SAVE TO CSV
 resolveZone_MW_merged.to_csv(path_or_buf = os.path.join(mainOutputFolder, "0718_results", tech + "_OOS_RESOLVEZONE_MW.csv"), index = False)
 
-#########################
-## APPLY TO SuperCREZs ##
-#########################
+#####################################################
+## APPLY calcSupplyCurve_geothermal TO Super CREZs ##
+#####################################################
 
 ## output list to append 
 resolveZone_MW_ls = []
@@ -1013,10 +961,9 @@ for tab in [resolveZone_MW_ls[2], resolveZone_MW_ls[3]]:
 ## SAVE TO CSV
 resolveZone_MW_merged.to_csv(path_or_buf = os.path.join(mainOutputFolder, supplyCurveFolder, tech + "_CA_RESOLVEZONE_MW.csv"), index = False)
 
-
-#########################
-## APPLY TO STATES ##
-#########################
+################################################
+## APPLY calcSupplyCurve_geothermal TO STATES ##
+################################################
 
 ## output list to append 
 resolveZone_MW_ls = []
@@ -1048,19 +995,19 @@ resolveZone_MW_merged.to_csv(path_or_buf = os.path.join(mainOutputFolder, supply
 elapsed_time = (time.time() - start_time)/(60)
 print(str(elapsed_time) + " minutes")
 
-
-''' ==============================================================
+'''
+#################################################
+## REMOVE BASELINE RESOURCES FROM SUPPLY CURVE ##
+#################################################
+IMPORTANT NOTE: Run after creating supply curves for all technologies
+PURPOSE: aggregates baseline (existing) resources for all technologies 
+and subtracts it from the supply curve values
+'''
 ############################################
 ## SUM BASELINE RESOURCES BY RESOLVE_ZONE ##
 ############################################
-'''
+
 df_baseline = pandas.read_csv(r"C:\Users\Grace\Documents\TNC_beyond50\PathTo100\RESOLVE_related_data\RESOLVE-CPUCRPS_listComparison_AllTechSum_EL_noBaselineOOS.csv")
-
-#df_baseline_melt = pandas.melt(df_baseline, id_vars=["RESOLVE_ZONE", "Row Labels"], var_name="Technology", value_name="MW")
-#df_baseline_melt = df_baseline_melt.drop(columns=["Row Labels"])
-#df_baseline_melt['MW'] = df_baseline_melt['MW'].convert_objects(convert_numeric=True)
-#df_baseline_RESOLVEZONE_sum = df_baseline_melt.groupby(['RESOLVE_ZONE', "Technology"]).sum()
-
 
 df_baseline['Geothermal'] = df_baseline['Geothermal'].convert_objects(convert_numeric=True) 
 df_geo =df_baseline[["RESOLVE_ZONE","Geothermal"]].groupby(['RESOLVE_ZONE']).sum()
@@ -1077,18 +1024,17 @@ df_wind =df_baseline[["RESOLVE_ZONE","Wind"]].groupby(['RESOLVE_ZONE']).sum()
 df_wind.reset_index(inplace=True)
 df_wind.to_csv(path_or_buf = r"C:\Users\Grace\Documents\TNC_beyond50\PathTo100\RESOLVE_related_data\wind_baseline_noBaselineOOS.csv", index = True)
 
-''' ==============================================================
 ####################################################
 ## SUBTRACT BASELINE RESOURCES FROM MW ESTIMATES ##
 ###################################################
-'''
+
 ## import RESOLVE supply curve values:
 resolveSupplyCurve = pandas.read_csv(r"C:\Users\Grace\Documents\TNC_beyond50\PathTo100\siteSuitabilityOutputs\0618_results_archived\summaryResults_061818.csv")
 
 ## import STPOSTAL_RESOLVEZONE_key csv:
 stpostalKey = pandas.read_csv(r"C:\Users\Grace\Documents\TNC_beyond50\PathTo100\RESOLVE_related_data\STPOSTAL_RESOLVEZONE_key.csv")
 
-
+## FUNCTION to subtract baseline from supply curve
 def subtractBaseline (df_merged, baselineColName):
     pattern = r'cap_MW_\S'
     MWcolList = [x for x in list(df_merged) if re.search(pattern, x)]
@@ -1099,9 +1045,9 @@ def subtractBaseline (df_merged, baselineColName):
     
     return df_merged
 
-###########
-## WIND ##
-###########
+###################
+## APPLY TO WIND ##
+###################
     
 ## Updates on 11/30/18: No longer subtracting baseline resources from site suitability results for OOS RESOLVE ZONE or State-wide because we erased 
 ## wind and solar existing power plants when creating the potential project area feature classes
@@ -1134,8 +1080,6 @@ df_wind_CA_RESOLVE_merged_sub.rename(columns={'RESOLVE_ZONE':'RESOLVE_ZONE_wind'
 ## save to csv:
 df_wind_CA_RESOLVE_merged_sub.to_csv(path_or_buf = os.path.join(mainOutputFolder, supplyCurveFolder, "wind_CA_RESOLVEZONE_avgCFMW_PA_net.csv"), index = False)
 
-
-
 ## import wind zones - WALL TO WALL
 df_wind_state = pandas.read_csv(os.path.join(mainOutputFolder, supplyCurveFolder, "wind_OOS_state_avgCFMW_PA.csv"))
 ## merge STPOSTAL key to get RESOLVEZONE names
@@ -1148,10 +1092,9 @@ df_wind_state_merged_sub = subtractBaseline(df_merged= df_wind_state_merged, bas
 ## save to csv:
 df_wind_state_merged_sub.to_csv(path_or_buf = os.path.join(mainOutputFolder, supplyCurveFolder, "wind_OOS_state_avgCFMW_PA_net.csv"), index = False)
 
-
-###########
-## SOLAR ##
-###########
+####################
+## APPLY TO SOLAR ##
+####################
 
 ## import PV zones - OOS : no need to subtract baseline
 df_PV_OOS_RESOLVE = pandas.read_csv(os.path.join(mainOutputFolder, supplyCurveFolder, "solar_OOS_RESOLVEZONE_avgCFMW_PA.csv"))
@@ -1187,7 +1130,6 @@ df_PV_CA_RESOLVE_merged_sub_compare = pandas.merge(resolveSupplyCurve, df_PV_CA_
 ## save to csv:
 df_PV_CA_RESOLVE_merged_sub_compare.to_csv(path_or_buf = os.path.join(mainOutputFolder, supplyCurveFolder, "solar_CA_RESOLVEZONE_avgCFMW_PA_net.csv"), index = False)
 
-
 ## import PV zones - State
 df_PV_state = pandas.read_csv(os.path.join(mainOutputFolder, supplyCurveFolder, "solar_OOS_state_avgCFMW_PA.csv"))
 ## join the df_baseline table using RESOLVE_ZONE
@@ -1201,13 +1143,11 @@ df_PV_state_merged_sub = subtractBaseline(df_merged= df_PV_state_merged, baselin
 ## save to csv:
 df_PV_state_merged_sub.to_csv(path_or_buf = os.path.join(mainOutputFolder, supplyCurveFolder, "solar_OOS_state_avgCFMW_PA_net.csv"), index = False)
 
-
 ########################################
 ## MERGE SOLAR AND WIND SUPPLY CURVES ##
 ########################################
 
 ####### RESOLVE ZONES:
-
 ## WIND: concat OOS and CA RESOLVE ZONE supply curves and then merge with original RESOLVE supply curve values
 RESOLVE_ZONES_wind_merged = pandas.concat([df_wind_OOS_RESOLVE_merged_sub, df_wind_CA_RESOLVE_merged_sub], axis = 0)
 RESOLVE_ZONES_wind_merged.rename(columns={"RESOLVE_ZONE_wind": "RESOLVE_ZONE"}, inplace=True)
@@ -1238,10 +1178,9 @@ w2w_merged_compare = pandas.merge(resolveSupplyCurve, w2w_merged, how = "outer",
 ## save to csv
 w2w_merged_compare.to_csv(os.path.join(mainOutputFolder, supplyCurveFolder, "supplyCurvesForRESOLVE", "envSupplyCurves_w2w.csv"), index=False)
 
-
-################
-## GEOTHERMAL ##
-################
+#########################
+## APPLY TO GEOTHERMAL ##
+#########################
 
 ## import geothermal zones - OOS
 df_geo_OOS_RESOLVE = pandas.read_csv(r"C:\Users\Grace\Documents\TNC_beyond50\PathTo100\siteSuitabilityOutputs\0718_results\geothermal_OOS_RESOLVEZONE_MW.csv")
