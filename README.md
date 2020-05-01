@@ -12,20 +12,20 @@ This repository contains the 1) links to interactively view some spatial results
 
 ## Additional data and result tables
 The following data tables in Excel workbook format are part of Supporting Information and are located in the [**AdditionalDataTables_forPaper**](/AdditionalDataTables_forPaper) subfolder in this repo. They contain the data that were used to create several of the figures in the main body of the text as well as those in the Supporting Information. 
-- Additional data table S1 (**EnvironmentalExclusionCategoryDataSources.xlsx**): Data sources and links for each Environmental Exclusion Category (Step 1). Extended versions of Tables S9–S12.
-- Additional data table S2 (**ResourceAssessment.xlsx**): Unadjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE (used to make SI Fig. S4)
-- Additional data table S3 (ResourceAssessment.xlsx): Adjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE, supply curve inputs for RESOLVE modeling (used to make SI Fig. S3)
-- Additional data table S4 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Total resource cost of each portfolio
-- Additional data table S5 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Cost breakdown of each portfolio
-- Additional data table S6 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
-- Additional data table S7 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Generation (MWh) of selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
-- Additional data table S8 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Total (selected + existing and contracted) Capacity (MW) across all RESOLVE Zones by 2050 for all portfolios
-- Additional data table S9 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Selected capacity (MW) across all RESOLVE Zone by 2050 for all portfolios
-- Additional data table S10 (CapacityExpansionResults_RESOLVEportfolios.xlsx): Generation (MWh) across all RESOLVE Zones by 2050 for all portfolios
-- Additional data table S11 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for generation aggregated across all RESOLVE Zones or regions
-- Additional data table S12 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for generation by RESOLVE Zone or region
-- Additional data table S13 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for transmission aggregated across all RESOLVE Zones or region
-- Additional data table S14 (StrategicEnvAssessment.xlsx): Strategic Environmental Assessment results for transmission by RESOLVE Zone or region
+- Additional data table S1 ([**EnvironmentalExclusionCategoryDataSources.xlsx**](/AdditionalDataTables_forPaper/EnvironmentalExclusionCategoryDataSources.xlsx)): Data sources and links for each Environmental Exclusion Category (Step 1). Extended versions of Tables S9–S12.
+- Additional data table S2 ([**ResourceAssessment.xlsx**](/AdditionalDataTables_forPaper/)): Unadjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE (used to make SI Fig. S4)
+- Additional data table S3 ([**ResourceAssessment.xlsx**](/AdditionalDataTables_forPaper/ResourceAssessment.xlsx)): Adjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE, supply curve inputs for RESOLVE modeling (used to make SI Fig. S3)
+- Additional data table S4 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**]](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Total resource cost of each portfolio
+- Additional data table S5 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Cost breakdown of each portfolio
+- Additional data table S6 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
+- Additional data table S7 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Generation (MWh) of selected capacity (MW) by RESOLVE Zone by 2050 for all portfolios
+- Additional data table S8 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Total (selected + existing and contracted) Capacity (MW) across all RESOLVE Zones by 2050 for all portfolios
+- Additional data table S9 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Selected capacity (MW) across all RESOLVE Zone by 2050 for all portfolios
+- Additional data table S10 ([**CapacityExpansionResults_RESOLVEportfolios.xlsx**](/AdditionalDataTables_forPaper/CapacityExpansionResults_RESOLVEportfolios.xlsx)): Generation (MWh) across all RESOLVE Zones by 2050 for all portfolios
+- Additional data table S11 ([**StrategicEnvAssessment.xlsx**](/AdditionalDataTables_forPaper/StrategicEnvAssessment.xlsx)): Strategic Environmental Assessment results for generation aggregated across all RESOLVE Zones or regions
+- Additional data table S12 ([**StrategicEnvAssessment.xlsx**](/AdditionalDataTables_forPaper/StrategicEnvAssessment.xlsx)): Strategic Environmental Assessment results for generation by RESOLVE Zone or region
+- Additional data table S13 ([**StrategicEnvAssessment.xlsx**](/AdditionalDataTables_forPaper/StrategicEnvAssessment.xlsx)): Strategic Environmental Assessment results for transmission aggregated across all RESOLVE Zones or region
+- Additional data table S14 ([**StrategicEnvAssessment.xlsx**](/AdditionalDataTables_forPaper/StrategicEnvAssessment.xlsx)): Strategic Environmental Assessment results for transmission by RESOLVE Zone or region
 
 ## Methodology and code:
 The following are the steps in the main steps in the analysis and the scripts and/or tools to implement them:
