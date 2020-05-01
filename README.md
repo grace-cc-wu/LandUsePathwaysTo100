@@ -1,6 +1,6 @@
 # Low-impact land use pathways to deep decarbonization of electricity
 
-This repository contains the Python scripts used to perform project site selection and strategic environmental assessment as well the results from the analysis used to produce the figures in the published paper:
+This repository contains the 1) links to interactively view some spatial results and download the data; 2) additional data tables as part of Supporting Information, 3) Python scripts used to perform project site selection and strategic environmental assessment as well the results from the analysis used to produce the figures in the published paper:
 
 > Wu, G.C., Leslie, E., Sawyerr, O., Cameron, D.R., Brand, E., Cohen, B., Allen, D., Ochoa, M., Olson, A., 2020. Low-impact land use pathways to deep decarbonization of electricity. Environ. Res. Lett. https://doi.org/10.1088/1748-9326/ab87d1
 
@@ -11,6 +11,7 @@ This repository contains the Python scripts used to perform project site selecti
 - The selected project areas (SPAs) are not publicly available for download (results shown in Fig. 4 in the paper). These areas associated with a given scenario identify optimal locations for possible new energy generation based on the criteria selected by the authors. This study is based on scenario analysis and is not a siting study capable of making prescriptions or predictions of where which areas will or should be developed. However, many of these lands are privately-owned so the data could easily be mis-interpreted by users or landowners as identifying lands which are targeted or sanctioned for renewable energy development by the organizations involved in the study. These data are not publicly available due to the risk of mis-interpretation and the legal and political risks associated with a possible change in market value associated with this identification. However, the code used to generate these selected project areas (i.e., the site selection methods and process) is available in this repository (step 5 below). 
 
 ## Additional data and result tables
+The following data tables in Excel workbook format are part of Supporting Information. They contain the data that were used to create several of the figures in the main body of the text as well as those in the Supporting Information. 
 - Additional data table S1 (EnvironmentalExclusionCategoryDataSources.xlsx): Data sources and links for each Environmental Exclusion Category (Step 1). Extended versions of Tables S9–S12.
 - Additional data table S2 (ResourceAssessment.xlsx): Unadjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE (used to make SI Fig. S4)
 - Additional data table S3 (ResourceAssessment.xlsx): Adjusted resource potential results (capacity in megawatts, MW) from resource assessment for states used in RESOLVE, supply curve inputs for RESOLVE modeling (used to make SI Fig. S3)
