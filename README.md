@@ -5,8 +5,8 @@ This repository contains the 1) links to interactively view some spatial results
 > Wu, G.C., Leslie, E., Sawyerr, O., Cameron, D.R., Brand, E., Cohen, B., Allen, D., Ochoa, M., Olson, A., 2020. Low-impact land use pathways to deep decarbonization of electricity. *Environ. Res. Lett.* https://doi.org/10.1088/1748-9326/ab87d1
 
 ## Spatial inputs and results
-- View the wind and solar site suitability maps via an interactive webmap here.
-- Download the Environmental Exclusion Categories here (used as an input to create Fig. 1 in the paper). 
+- View the wind and solar site suitability maps via an interactive webmap [**here**](https://tnc.maps.arcgis.com/apps/webappviewer/index.html?id=71b0605e44bf475ea55f6d369e668b2c).
+- Download the Environmental Exclusion Categories a [**geodatabase**](https://tnc.app.box.com/s/yxyiu8fp6bsqckvmkayqxz5ib1xik7mh) and [**shapefile**](https://tnc.app.box.com/s/votra7kgbdme192z6qlrja7rg4csiflb) (used as an input to create Fig. 1 in the paper). 
 - Download the wind, solar, and geothermal resource assessment spatial results here (Candidate Project Areas; results shown in Fig. 1 in the paper). 
 - The selected project areas (SPAs) are not publicly available for download (results shown in Fig. 4 in the paper). These areas associated with a given scenario identify optimal locations for possible new energy generation based on the criteria selected by the authors. This study is based on scenario analysis and is not a siting study capable of making prescriptions or predictions of where which areas will or should be developed. However, many of these lands are privately-owned so the data could easily be mis-interpreted by users or landowners as identifying lands which are targeted or sanctioned for renewable energy development by the organizations involved in the study. These data are not publicly available due to the risk of mis-interpretation and the legal and political risks associated with a possible change in market value associated with this identification. However, the code used to generate these selected project areas (i.e., the site selection methods and process) is available in this repository (step 5 below). 
 
