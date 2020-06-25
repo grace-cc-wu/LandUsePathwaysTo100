@@ -29,7 +29,7 @@ The following data tables in Excel workbook format are part of Supporting Inform
 ## Methodology and code:
 The following are the steps in the main steps in the analysis and the scripts and/or tools to implement them:
 
-1. Conduct site suitability analysis with only non-environmental inputs using Script Tool B, Stage 1 of the [**MapRE GIS zoning tool**](https://mapre.lbl.gov/gis-tools/) (Requires ArcGIS to run). This step uses raster-based geoprocessing.
+1. Conduct site suitability analysis with only non-environmental inputs using Script Tool B, Stages 1 and 2 of the [**MapRE GIS zoning tool**](https://mapre.lbl.gov/gis-tools/) (Requires ArcGIS to run, but tool is free to download). This step uses raster-based geoprocessing.
 
 2. [**createSupplyCurve.py**](/createSupplyCurve.py) (requires arcpy): a) creates renewble resource areas using using vector environmental inputs and results from step 1 above (using vector based processing to retain the native resolution of the environmental spatial datasets), b) creates Candidate Project Areas (CPAs) using output of 2a, c) produces the supply curves in the form of csvs for input into the capacity expansion model, RESOLVE. 
 
