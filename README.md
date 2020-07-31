@@ -27,7 +27,7 @@ The following data tables in Excel workbook format are part of Supporting Inform
 - Additional data table S14 ([**StrategicEnvAssessment.xlsx**](/AdditionalDataTables_forPaper/StrategicEnvAssessment.xlsx)): Strategic Environmental Assessment results for transmission by RESOLVE Zone or region
 
 ## Methodology and code:
-The following are the steps in the main steps in the analysis and the scripts and/or tools to implement them:
+The following are the main steps in the analysis and the scripts and/or tools to implement them:
 
 1. Conduct site suitability analysis with only non-environmental inputs using Script Tool B, Stages 1 and 2 of the [**MapRE GIS zoning tool**](https://mapre.lbl.gov/gis-tools/) (Requires ArcGIS to run, but tool is free to download). This step uses raster-based geoprocessing.
 
